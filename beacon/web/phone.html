@@ -259,10 +259,11 @@
 
   $('#checkBtn').addEventListener('click', async () => {
     const btn = $('#checkBtn');
+    const shown = state && state.incidents.find(i => i.ack_t === null);   // the alert on screen, not a newer one
     btn.disabled = true; btn.textContent = 'Marking…';
     try {
       await fetch('/ack', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                           body: JSON.stringify({by: ($('#name').value || 'Phone').trim()})});
+                           body: JSON.stringify({by: ($('#name').value || 'Phone').trim(), id: shown ? shown.id : null})});
     } catch (e) {}
     btn.disabled = false; btn.textContent = 'Mark as Checked';
   });
