@@ -23,7 +23,11 @@
   <p>Your phone needs to be on the same Wi-Fi or hotspot as this laptop.</p>
 </div>
 <script>
-fetch('/info').then(r => r.json()).then(({url}) => {
+// /qr shows the alert page; /qr?control shows the remote (only when remote.py is running)
+const forRemote = new URLSearchParams(location.search).has('control');
+fetch('/info').then(r => r.json()).then(info => {
+  const url = (forRemote && info.control_url) || info.url;
+  if (forRemote && info.control_url) document.querySelector('h1').textContent = 'Beacon remote';
   document.getElementById('url').textContent = url;
   if (window.QRCode) new QRCode(document.getElementById('qr'), {text: url, width: 260, height: 260});
 });

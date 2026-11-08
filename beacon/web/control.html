@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Remote · Beacon</title>
+<style>
+  /* same iOS palette as the alert page; the --fill colors are darker so white text on them stays readable */
+  :root{
+    --bg:#f2f2f7; --card:#ffffff; --fill:#e9e9ee; --label:#000000; --secondary:#3c3c4399; --tertiary:#3c3c434d;
+    --separator:#c6c6c8; --blue:#007aff; --red:#ff3b30; --green:#34c759; --gray:#8e8e93;
+    --fill-blue:#0062cc; --fill-red:#d70015; --fill-green:#1f7a35;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 28px rgba(0,0,0,.06);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#000000; --card:#1c1c1e; --fill:#2c2c2e; --label:#ffffff; --secondary:#ebebf599; --tertiary:#ebebf54d;
+    --separator:#38383a; --blue:#0a84ff; --red:#ff453a; --green:#30d158; --gray:#8e8e93;
+    --shadow:none; color-scheme:dark;
+  }}
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;background:var(--bg);color:var(--label);font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.01em;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  body{padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+  main{max-width:560px;margin:0 auto}
+  button{font:inherit;color:inherit;-webkit-user-select:none;user-select:none}
+
+  .nav{display:flex;align-items:flex-end;justify-content:space-between;padding:8px 4px 14px}
+  .nav h1{margin:0;font:700 34px/1.1 -apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;letter-spacing:.01em}
+  .nav .where{display:block;margin-top:2px;color:var(--secondary);font-size:15px}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--secondary);padding-bottom:6px;white-space:nowrap}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--green)}
+  .live.off i{background:var(--gray)}
+
+  /* what the turret is doing right now */
+  .status{--tint:var(--gray);display:flex;align-items:center;gap:16px;min-height:116px;padding:18px;border-radius:22px;background:var(--card);box-shadow:var(--shadow)}
+  .status[data-tone="busy"]{--tint:var(--blue)}
+  .status[data-tone="on"]{--tint:var(--red)}
+  .status[data-tone="done"]{--tint:var(--green)}
+  .disc{flex:0 0 auto;width:60px;height:60px;border-radius:50%;display:grid;place-items:center;
+        background:color-mix(in srgb,var(--tint) 15%,var(--card));color:var(--tint);transition:background .3s,color .3s}
+  .disc svg{width:28px;height:28px}
+  .status[data-tone="busy"] .disc svg{animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .status .text{min-width:0;overflow-wrap:anywhere}
+  .eyebrow{margin:0 0 2px;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tint)}
+  .status h2{margin:0;font:700 24px/1.15 -apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;letter-spacing:.005em}
+  .status .sub{margin:3px 0 0;color:var(--secondary);font-size:15px;text-wrap:pretty}
+  .status .err{margin:6px 0 0;color:var(--red);font-size:14px;white-space:pre-line}
+
+  /* the five racks, left to right like the row */
+  .section{margin-top:30px}
+  .section h3{margin:0 0 7px;padding-left:16px;font-size:13px;font-weight:400;letter-spacing:.02em;text-transform:uppercase;color:var(--secondary)}
+  .racks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+  .rack{--fill:var(--fill-blue);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;height:104px;
+        border:0;border-radius:16px;background:var(--card);box-shadow:var(--shadow);cursor:pointer;transition:transform .1s,background .2s,color .2s}
+  .rack:active{transform:scale(.95)}
+  .rack b{font:700 30px/1 -apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif}
+  .rack small{font-size:13px;color:var(--secondary);font-variant-numeric:tabular-nums}
+  .rack[data-tone="on"]{--fill:var(--fill-red)}
+  .rack[data-tone="done"]{--fill:var(--fill-green)}
+  .rack[aria-pressed="true"]{background:var(--fill);color:#fff}
+  .rack[aria-pressed="true"] small{color:#fff}
+  .rack[aria-pressed="true"][data-tone="busy"]{animation:breathe 1s ease-in-out infinite}
+  @keyframes breathe{50%{opacity:.62}}
+  .rack[disabled]{opacity:.4;cursor:default;transform:none}
+
+  /* inset grouped lists, like Settings */
+  .group{background:var(--card);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  .action{display:block;width:100%;min-height:50px;padding:13px 16px;border:0;background:transparent;color:var(--blue);text-align:left;cursor:pointer;position:relative}
+  .action + .action::before,.field + .field::before{content:"";position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--separator)}
+  .action.danger{color:var(--red)}
+  .action:active{background:var(--fill)}
+  .action[disabled]{color:var(--tertiary);background:transparent;cursor:default}
+  .field{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;padding:11px 16px;position:relative}
+  .field .val{color:var(--secondary);font-variant-numeric:tabular-nums;text-align:right}
+  .note{margin:7px 16px 0;font-size:13px;color:var(--secondary)}
+
+  /* small phones: keep Turn Laser Off on screen during an alert */
+  @media (max-height:640px){.rack{height:84px}.section{margin-top:22px}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <div class="nav">
+    <div><h1>Remote</h1><span class="where">Beacon laser · Row 1</span></div>
+    <span class="live off" id="live"><i></i><span id="liveText">Connecting</span></span>
+  </div>
+
+  <section class="status" id="status">
+    <div class="disc" id="glyph" aria-hidden="true"></div>
+    <div class="text">
+      <div aria-live="polite"><p class="eyebrow" id="eyebrow">Connecting</p><h2 id="title">One moment…</h2></div>
+      <p class="sub" id="sub"></p>
+      <p class="err" id="err" aria-live="polite" hidden></p>
+    </div>
+  </section>
+
+  <div class="section">
+    <h3>Point the laser at</h3>
+    <div class="racks" id="racks"></div>
+    <p class="note">The alert goes out once the laser is on the rack.</p>
+  </div>
+
+  <div class="section">
+    <div class="group">
+      <button class="action danger" id="offBtn" disabled>Turn Laser Off</button>
+      <button class="action" id="homeBtn" disabled>Center Turret</button>
+    </div>
+    <p class="note">Turning the laser off or centering also marks the alert as checked.</p>
+  </div>
+
+  <div class="section">
+    <h3>Status</h3>
+    <div class="group">
+      <div class="field"><span>Turret</span><span class="val" id="vAngle">—</span></div>
+      <div class="field"><span>Laser</span><span class="val" id="vLaser">—</span></div>
+      <div class="field"><span>Alert page</span><span class="val" id="vPhones">—</span></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  const $ = q => document.querySelector(q);
+  const ICON = {
+    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>',
+    ring: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/></svg>',
+    spin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 3.5a8.5 8.5 0 1 1-8.5 8.5"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 12.5l4.2 4.2L18.5 7.5"/></svg>',
+    bang: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="10.8" y="4.5" width="2.4" height="10" rx="1.2"/><circle cx="12" cy="18.6" r="1.6"/></svg>'
+  };
+  const UNREACHABLE = 'Is this phone on the same Wi‑Fi or hotspot, and is remote.py still running?';
+  let s = null;            // the newest state from the laptop
+  let lastSeq = -Infinity; // so an answer that arrives late never replaces a newer one
+  let fails = 0;           // polls in a row that failed; two means the laptop is out of reach
+  let tapped = null;       // rack just tapped, lit up until the laptop's answer catches up
+  let postSeq = 0, inflight = false, glyphKey = '', flash = '', flashUntil = 0;
+
+  const reach = () => fails < 2;
+  const took = sec => { sec = Math.max(0, Math.round(sec)); return sec < 60 ? sec + ' s' : Math.round(sec / 60) + ' min'; };
+  const ago = sec => sec < 60 ? 'just now' : took(sec) + ' ago';
+  function setText(el, v) { if (el.textContent !== v) el.textContent = v; }   // no churn for screen readers
+  function setGlyph(key) { if (glyphKey !== key) { $('#glyph').innerHTML = ICON[key]; glyphKey = key; } }
+
+  function buildRacks(names) {
+    $('#racks').innerHTML = '';
+    names.forEach(r => {
+      const b = document.createElement('button');
+      b.className = 'rack'; b.dataset.rack = r; b.disabled = true;
+      b.setAttribute('aria-pressed', 'false');
+      b.setAttribute('aria-label', 'Rack ' + r);
+      b.innerHTML = '<b></b><small></small>';
+      b.querySelector('b').textContent = r;
+      b.addEventListener('click', () => tap(r));
+      $('#racks').appendChild(b);
+    });
+  }
+
+  function render() {
+    const ok = reach();
+    if (!s) {                      // haven't heard from the laptop yet
+      setGlyph(ok ? 'ring' : 'bang');
+      setText($('#eyebrow'), ok ? 'Connecting' : 'Offline');
+      setText($('#title'), ok ? 'One moment…' : "Can't reach the laptop");
+      setText($('#sub'), ok ? '' : UNREACHABLE);
+      return;
+    }
+    const st = s, names = Object.keys(st.angles).sort();
+    if ($('#racks').children.length !== names.length) buildRacks(names);
+    const live = ok && st.connected, r = st.rack, a = st.alert;
+    const alertOpen = !!(a && a.ack_t == null);
+    const phase = ok ? st.phase : 'unreachable';
+    let tone = 'idle', glyph = 'ring', eyebrow, title, sub;
+    switch (phase) {
+      case 'unreachable':
+        glyph = 'bang'; eyebrow = 'Offline'; title = "Can't reach the laptop"; sub = UNREACHABLE; break;
+      case 'offline':
+        glyph = 'bang'; eyebrow = 'Not connected'; title = 'Pico not connected';
+        sub = st.error || 'Plug the Pico into the laptop. It reconnects by itself.'; break;
+      case 'aiming':
+        tone = 'busy'; glyph = 'spin'; eyebrow = 'Moving'; title = 'Pointing at Rack ' + r;
+        sub = a ? 'Putting the laser back on it.' : 'The alert goes out once the laser is on it.'; break;
+      case 'on':
+        tone = 'on'; glyph = 'target'; eyebrow = 'Laser on'; title = 'Rack ' + r;
+        sub = (a ? 'Alert sent ' + ago(st.now - a.t) + '. ' : '') + 'Waiting for someone to check it.'; break;
+      case 'checked':
+        tone = 'done'; glyph = 'check'; eyebrow = 'Checked'; title = 'Rack ' + r + ' checked';
+        sub = a && a.ack_t ? 'By ' + a.ack_by + ', ' + took(a.ack_t - a.t) + ' after the alert. Laser off.' : 'Laser off.'; break;
+      case 'centering':
+        tone = 'busy'; glyph = 'spin'; eyebrow = 'Moving'; title = 'Centering'; sub = 'Laser off.'; break;
+      case 'home':
+        eyebrow = 'Laser off'; title = 'Centered'; sub = 'Pick a rack to send the next alert.'; break;
+      case 'off':
+        eyebrow = 'Laser off'; title = 'Laser off'; sub = 'Pick a rack to send the next alert.'; break;
+      default:
+        eyebrow = 'Ready'; title = 'Pick a rack'; sub = 'The laser points at it, then the alert goes out.';
+    }
+    if (ok && st.busy && (phase === 'off' || phase === 'idle')) {   // a cancelled move still finishing
+      tone = 'busy'; glyph = 'spin'; eyebrow = 'Moving'; title = 'Stopping'; sub = 'Laser off.';
+    }
+    $('#status').dataset.tone = tone; setGlyph(glyph);
+    setText($('#eyebrow'), eyebrow); setText($('#title'), title); setText($('#sub'), sub);
+    const err = !ok || phase === 'offline' ? '' : (Date.now() < flashUntil ? flash : st.error || '');
+    setText($('#err'), err); $('#err').hidden = !err;
+
+    const shown = !ok ? null : (tapped || (['aiming', 'on', 'checked'].includes(phase) ? r : null));
+    for (const b of $('#racks').children) {
+      const name = b.dataset.rack, on = name === shown;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.dataset.tone = on ? (tapped ? 'busy' : tone) : '';
+      b.disabled = !live;
+      setText(b.querySelector('small'), Math.round(st.angles[name]) + '°');
+    }
+    // Laser Off also works with the Pico unplugged: it still closes the alert on the alert page
+    $('#offBtn').disabled = !ok || !(st.laser || alertOpen || phase === 'aiming');
+    $('#homeBtn').disabled = !live;
+
+    setText($('#vAngle'), !live || st.angle == null ? '—' : Math.round(st.angle) + '°' + (st.pointing ? ' · Rack ' + st.pointing : ''));
+    setText($('#vLaser'), !live ? '—' : st.laser ? 'On' : 'Off');
+    setText($('#vPhones'), !ok ? '—' : st.phones ? 'Open on ' + st.phones + (st.phones === 1 ? ' phone' : ' phones') : 'Not open anywhere');
+    $('#live').classList.toggle('off', !live);
+    setText($('#liveText'), !ok ? 'Offline' : st.connected ? 'Connected' : 'No Pico');
+  }
+
+  function paint() { try { render(); } catch (e) { console.error(e); } }
+
+  // the 4 s limit covers reading the answer too, so a Wi-Fi drop mid-reply can't hang anything
+  async function getJSON(url, opts) {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 4000);
+    try {
+      const res = await fetch(url, Object.assign({cache: 'no-store', signal: c.signal}, opts));
+      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
+      return await res.json();
+    } finally { clearTimeout(t); }
+  }
+
+  function apply(st) {
+    if (!st || typeof st !== 'object' || !st.angles || typeof st.seq !== 'number') return;
+    if (st.seq < lastSeq) return;                 // older than what's on screen
+    lastSeq = st.seq; s = st;
+    if (tapped && st.rack === tapped) tapped = null;
+  }
+
+  async function refresh() {
+    if (inflight) return;
+    inflight = true;
+    try { apply(await getJSON('/control/state')); fails = 0; }
+    catch (e) { fails++; }
+    finally { inflight = false; paint(); }
+  }
+
+  async function post(path, body) {
+    const mine = ++postSeq;
+    try {
+      apply(await getJSON(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})}));
+    } catch (e) {
+      flash = e && e.status ? "That didn't go through. Try again." : "Couldn't reach the laptop. Try again.";
+      flashUntil = Date.now() + 3000;
+    } finally {
+      if (mine === postSeq) tapped = null;        // only the newest tap decides the highlight
+      paint();
+    }
+  }
+
+  function tap(rack) {
+    if (!s || !s.connected || !reach()) return;
+    if (navigator.vibrate) navigator.vibrate(8);
+    tapped = rack; paint();                       // light the button now, the answer follows in a moment
+    post('/control/aim', {rack: rack});
+  }
+
+  $('#offBtn').addEventListener('click', () => post('/control/off'));
+  $('#homeBtn').addEventListener('click', () => post('/control/home'));
+  document.addEventListener('touchstart', () => {}, {passive: true});   // iOS only shows :active with a touch listener
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  setInterval(refresh, 700);
+  refresh();
+})();
+</script>
+</body>
+</html>
