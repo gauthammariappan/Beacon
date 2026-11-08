@@ -14,6 +14,7 @@ import argparse
 import csv
 import json
 import os
+import signal
 import sys
 import time
 
@@ -166,6 +167,10 @@ def replay(path, loc, angles):
         print("No decisions in this recording.")
 
 
+def _stop_on_signal(signum, frame):
+    raise KeyboardInterrupt
+
+
 def main():
     ap = argparse.ArgumentParser(description="Listen, locate the beeping box, aim the laser")
     ap.add_argument("--vote", type=int, default=4, help="beeps to combine before aiming")
@@ -191,6 +196,9 @@ def main():
 
     from beacon.serial_port import PicoSerial
     pico = PicoSerial(args.port)
+    # closing the Terminal window (SIGHUP) or a plain kill (SIGTERM) shuts down like Ctrl+C: laser off
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, _stop_on_signal)
     hub = None
     if not args.no_web:
         from beacon.hub import Hub, lan_ip, start_server
