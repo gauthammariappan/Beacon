@@ -45,6 +45,7 @@ def find_serial_port() -> Optional[str]:
         return env_port
 
     patterns = [
+        "/dev/cu.usbmodem*",
         "/dev/tty.usbmodem*",
         "/dev/ttyACM*",
         "/dev/ttyUSB*",
