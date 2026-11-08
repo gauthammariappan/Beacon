@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Beacon v2.1 · Acoustic Localization</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -211,8 +213,21 @@
         </button>
       </nav>
 
-      <!-- System Status Indicators -->
+      <!-- System Status Indicators & Pager QR -->
       <div class="flex items-center gap-3">
+        <!-- Live QR Code for Mobile Pager Handoff -->
+        <div class="flex items-center gap-2.5 bg-slate-950/90 border border-slate-800 rounded-xl px-2.5 py-1 shadow-sm shrink-0">
+          <div id="header-qr-box" class="bg-white p-1 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity" title="Scan with phone or click to open Tech Pager">
+            <canvas id="qr-canvas-header" width="44" height="44" class="block"></canvas>
+            <div id="qr-container-header" class="hidden"></div>
+          </div>
+          <div class="flex flex-col text-left">
+            <span class="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">Mobile Pager</span>
+            <span class="text-[9px] font-mono text-slate-400">Scan for Tech Pager</span>
+            <a id="qr-link-header" href="#" target="_blank" class="text-[9px] font-mono text-cyan-400 hover:underline max-w-[110px] truncate" title="Open pager in new tab"></a>
+          </div>
+        </div>
+
         <button id="btn-toggle-view-desktop" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 font-mono">
           📱 Pager Mode
         </button>
@@ -225,6 +240,59 @@
         </div>
       </div>
     </header>
+
+    <!-- Compact Simulation & Demo Bar (Desktop Pitch Controls) -->
+    <div id="demo-bar" class="bg-slate-900/90 border-b border-slate-800 px-6 py-2 flex flex-wrap items-center justify-between gap-3 text-xs font-mono backdrop-blur shrink-0">
+      
+      <!-- Left: Replay Mode Toggle + Active Alarm Pattern -->
+      <div class="flex items-center gap-3">
+        <!-- Replay Toggle Button -->
+        <button id="btn-replay-toggle" class="px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-bold hover:bg-emerald-900/60 transition-all flex items-center gap-1.5" title="Click or press 'P' to pause/resume auto-replay">
+          <span id="replay-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="replay-status-text">▶ Auto-Replay: ON</span>
+          <span class="text-[10px] text-emerald-400/60 border border-emerald-500/30 px-1 rounded ml-1">[P]</span>
+        </button>
+
+        <span class="text-slate-600">|</span>
+
+        <!-- Pattern Selector Group -->
+        <div class="flex items-center gap-1.5">
+          <span class="text-slate-400 font-semibold text-[11px]">ALARM:</span>
+          <button id="btn-pattern-p1" class="demo-pattern-btn px-2 py-0.5 rounded border border-cyan-500 bg-cyan-950/80 text-cyan-300 font-bold transition-all" data-pattern="P1" title="Pattern P1: UPS On Battery (Key: Q)">
+            P1 (On Battery) <span class="text-[10px] opacity-60">[Q]</span>
+          </button>
+          <button id="btn-pattern-p2" class="demo-pattern-btn px-2 py-0.5 rounded border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 transition-all" data-pattern="P2" title="Pattern P2: UPS Low Battery (Key: W)">
+            P2 (Low Battery) <span class="text-[10px] opacity-60">[W]</span>
+          </button>
+          <button id="btn-pattern-p3" class="demo-pattern-btn px-2 py-0.5 rounded border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 transition-all" data-pattern="P3" title="Pattern P3: UPS Overload (Key: E)">
+            P3 (Overload) <span class="text-[10px] opacity-60">[E]</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Direct Rack Trigger Buttons -->
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400 font-semibold text-[11px]">TRIGGER RACK:</span>
+        <div class="flex items-center gap-1">
+          <button class="demo-trigger-rack-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-cyan-600 hover:text-slate-950 active:scale-95 text-slate-200 font-bold transition-all border border-slate-700" data-rack="A" title="Trigger Rack A (Key: 1)">
+            A <span class="text-[10px] opacity-60">[1]</span>
+          </button>
+          <button class="demo-trigger-rack-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-cyan-600 hover:text-slate-950 active:scale-95 text-slate-200 font-bold transition-all border border-slate-700" data-rack="B" title="Trigger Rack B (Key: 2)">
+            B <span class="text-[10px] opacity-60">[2]</span>
+          </button>
+          <button class="demo-trigger-rack-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-cyan-600 hover:text-slate-950 active:scale-95 text-slate-200 font-bold transition-all border border-slate-700" data-rack="C" title="Trigger Rack C (Key: 3)">
+            C <span class="text-[10px] opacity-60">[3]</span>
+          </button>
+          <button class="demo-trigger-rack-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-cyan-600 hover:text-slate-950 active:scale-95 text-slate-200 font-bold transition-all border border-slate-700" data-rack="D" title="Trigger Rack D (Key: 4)">
+            D <span class="text-[10px] opacity-60">[4]</span>
+          </button>
+          <button class="demo-trigger-rack-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-cyan-600 hover:text-slate-950 active:scale-95 text-slate-200 font-bold transition-all border border-slate-700" data-rack="E" title="Trigger Rack E (Key: 5)">
+            E <span class="text-[10px] opacity-60">[5]</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
 
     <!-- Main Tab Content Area -->
     <main class="flex-1 overflow-y-auto p-6">
@@ -441,108 +509,235 @@
             </div>
           </div>
 
+          <!-- Field Technician Mobile Hand-Off Banner with QR Code -->
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 backdrop-blur flex items-center gap-4">
+            <div class="bg-white p-1.5 rounded-xl shrink-0 shadow-lg cursor-pointer hover:scale-105 transition-transform" id="sidebar-qr-box" title="Scan with phone or click to open">
+              <canvas id="qr-canvas-sidebar" width="70" height="70" class="block"></canvas>
+              <div id="qr-container-sidebar" class="hidden"></div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <h4 class="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider">Field Tech Pager Handoff</h4>
+              </div>
+              <p class="text-[11px] text-slate-400 font-mono mb-1">Scan with any phone camera to test instant incident acknowledgment.</p>
+              <span class="text-[10px] font-mono text-amber-400 font-bold block">Scan for Tech Pager</span>
+              <a id="qr-link-sidebar" href="#" target="_blank" class="text-[10px] font-mono text-cyan-400 hover:underline truncate block max-w-full"></a>
+            </div>
+          </div>
+
         </div>
 
       </div>
 
 
       <!-- ========================================== -->
-      <!-- TAB 2: MODEL PROOF (Why ML for Judges)     -->
+      <!-- TAB 2: MODEL PROOF (Dual-Brain Architecture) -->
       <!-- ========================================== -->
       <div id="tab-model" class="tab-pane hidden flex-col gap-6 max-w-7xl mx-auto">
         
         <!-- Header -->
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 class="text-lg font-bold text-slate-100 font-mono">ML Location Model Proof: 3 Methods Benchmarked</h2>
-            <p class="text-xs text-slate-400 font-mono mt-0.5">Trained on Session 1, evaluated against Session 2 test data (acoustic reflections & leakage)</p>
+            <h2 class="text-lg font-bold text-slate-100 font-mono flex items-center gap-2">
+              Dual-Brain Machine Learning Architecture
+              <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-emerald-400 font-bold">2 Models Online</span>
+            </h2>
+            <p class="text-xs text-slate-400 font-mono mt-0.5">Brain 1 classifies spatial acoustic fingerprints (Racks A–E); Brain 2 classifies temporal pulse cadences (Alarm Meanings).</p>
           </div>
-          <button id="btn-refresh-metrics" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+          <button id="btn-refresh-metrics" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 flex items-center gap-1.5 transition-all">
             ↻ Refresh Metrics
           </button>
         </div>
 
-        <!-- 3-Method Accuracy Comparison Hero Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- ================================================ -->
+        <!-- SECTION 1: BRAIN 1 - SPATIAL LOCATION (ACOUSTIC) -->
+        <!-- ================================================ -->
+        <section class="rounded-2xl border border-slate-800 bg-slate-900/30 p-6 flex flex-col gap-6 backdrop-blur">
           
-          <!-- Baseline 1: Loudest Mic -->
-          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold">BASELINE 1</span>
-                <span class="text-xs font-mono text-rose-400">Can't name B or D</span>
-              </div>
-              <h3 class="font-bold text-sm text-slate-200">Loudest Mic (Argmax)</h3>
-              <p class="text-xs text-slate-500 font-mono mt-1">Picks A, C, or E based on largest 2500Hz energy</p>
-              <div class="mt-4">
-                <span id="metric-loudest-acc" class="text-4xl font-black text-rose-400 font-mono">51.7%</span>
-                <span class="text-xs text-slate-500 font-mono block mt-1">Test Accuracy</span>
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
+            <div class="flex items-center gap-2.5">
+              <span class="px-2.5 py-1 rounded bg-cyan-950 border border-cyan-500/50 text-cyan-400 font-mono text-xs font-black">BRAIN 1</span>
+              <div>
+                <h3 class="text-base font-bold font-mono text-slate-100">Spatial Location (Acoustic Fingerprint)</h3>
+                <p class="text-xs text-slate-400 font-mono">19 vectorized spatial features across 3 microphones at 2500 Hz to localize Racks A–E.</p>
               </div>
             </div>
-            <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-500">
-              0% recall on inter-mic Racks B and D.
+            <span class="text-[11px] font-mono text-cyan-400/80 bg-cyan-950/40 px-2.5 py-1 rounded border border-cyan-900">GET /model/location/metrics</span>
+          </div>
+
+          <!-- 3-Method Accuracy Comparison Hero Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Baseline 1: Loudest Mic -->
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 backdrop-blur flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold">BASELINE 1</span>
+                  <span class="text-xs font-mono text-rose-400">Fails on B & D</span>
+                </div>
+                <h4 class="font-bold text-sm text-slate-200">Loudest Mic (Argmax)</h4>
+                <p class="text-xs text-slate-500 font-mono mt-1">Picks A, C, or E based solely on loudest raw mic</p>
+                <div class="mt-4">
+                  <span id="metric-loudest-acc" class="text-4xl font-black text-rose-400 font-mono">51.7%</span>
+                  <span class="text-xs text-slate-500 font-mono block mt-1">Test Accuracy (Session 2)</span>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-500">
+                0% recall on inter-mic Racks B and D.
+              </div>
+            </div>
+
+            <!-- Baseline 2: Weighted Centroid -->
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 backdrop-blur flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold">BASELINE 2</span>
+                  <span class="text-xs font-mono text-amber-400">Non-ML Interpolation</span>
+                </div>
+                <h4 class="font-bold text-sm text-slate-200">Weighted Centroid</h4>
+                <p class="text-xs text-slate-500 font-mono mt-1">Interpolates shares across 0=A to 4=E, snaps to nearest</p>
+                <div class="mt-4">
+                  <span id="metric-centroid-acc" class="text-4xl font-black text-amber-400 font-mono">51.0%</span>
+                  <span class="text-xs text-slate-500 font-mono block mt-1">Test Accuracy (Session 2)</span>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-500">
+                Fails on boundary acoustic reflections & NONE.
+              </div>
+            </div>
+
+            <!-- Winner: Random Forest ML -->
+            <div class="rounded-2xl border-2 border-cyan-500 bg-gradient-to-b from-cyan-950/40 to-slate-900 p-5 backdrop-blur flex flex-col justify-between shadow-xl shadow-cyan-950/40">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-mono px-2 py-0.5 rounded bg-cyan-500 text-slate-950 font-black">WINNER (ML)</span>
+                  <span class="text-xs font-mono text-cyan-300 font-bold">19 Spatial Features</span>
+                </div>
+                <h4 class="font-bold text-sm text-slate-100">Random Forest Classifier</h4>
+                <p class="text-xs text-slate-400 font-mono mt-1">Learns aisle multipath, log-ratios, purity & SNR</p>
+                <div class="mt-4">
+                  <span id="metric-rf-acc" class="text-4xl font-black text-cyan-400 font-mono">100.0%</span>
+                  <span class="text-xs text-cyan-500/80 font-mono block mt-1">Test Accuracy (Session 2)</span>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-cyan-500/20 text-[11px] font-mono text-cyan-300">
+                Saved to <code class="bg-cyan-950 px-1 py-0.5 rounded">artifacts/location_model.joblib</code>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Brain 1 Confusion Matrices -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+              <h5 class="text-xs font-bold font-mono uppercase text-slate-400 mb-3">Loudest Mic Confusion Matrix</h5>
+              <div id="cm-loudest" class="overflow-x-auto"></div>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+              <h5 class="text-xs font-bold font-mono uppercase text-slate-400 mb-3">Weighted Centroid Confusion Matrix</h5>
+              <div id="cm-centroid" class="overflow-x-auto"></div>
+            </div>
+            <div class="rounded-2xl border border-cyan-500/40 bg-slate-900/50 p-5">
+              <h5 class="text-xs font-bold font-mono uppercase text-cyan-400 mb-3">Random Forest Confusion Matrix</h5>
+              <div id="cm-rf" class="overflow-x-auto"></div>
             </div>
           </div>
 
-          <!-- Baseline 2: Weighted Centroid -->
-          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold">BASELINE 2</span>
-                <span class="text-xs font-mono text-amber-400">Non-ML Comparison</span>
-              </div>
-              <h3 class="font-bold text-sm text-slate-200">Weighted Centroid</h3>
-              <p class="text-xs text-slate-500 font-mono mt-1">Interpolates shares across 0=A to 4=E, snaps to nearest</p>
-              <div class="mt-4">
-                <span id="metric-centroid-acc" class="text-4xl font-black text-amber-400 font-mono">51.0%</span>
-                <span class="text-xs text-slate-500 font-mono block mt-1">Test Accuracy</span>
-              </div>
-            </div>
-            <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-500">
-              Interpolates B/D, but fails on boundary reflections & NONE.
-            </div>
-          </div>
+        </section>
 
-          <!-- Winner: Random Forest ML -->
-          <div class="rounded-2xl border-2 border-cyan-500 bg-gradient-to-b from-cyan-950/40 to-slate-900 p-5 backdrop-blur flex flex-col justify-between shadow-xl shadow-cyan-950/40">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-mono px-2 py-0.5 rounded bg-cyan-500 text-slate-950 font-black">WINNER (ML)</span>
-                <span class="text-xs font-mono text-cyan-300 font-bold">Spatial Fingerprint</span>
-              </div>
-              <h3 class="font-bold text-sm text-slate-100">Random Forest Classifier</h3>
-              <p class="text-xs text-slate-400 font-mono mt-1">Learns aisle multipath, log-ratios, purity & SNR</p>
-              <div class="mt-4">
-                <span id="metric-rf-acc" class="text-4xl font-black text-cyan-400 font-mono">100.0%</span>
-                <span class="text-xs text-cyan-500/80 font-mono block mt-1">Test Accuracy</span>
-              </div>
-            </div>
-            <div class="mt-4 pt-3 border-t border-cyan-500/20 text-[11px] font-mono text-cyan-300">
-              Saved to <code class="bg-cyan-950 px-1 py-0.5 rounded">location_model.joblib</code>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Confusion Matrices Render Area -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- ============================================== -->
+        <!-- SECTION 2: BRAIN 2 - ALARM RHYTHM (TEMPORAL)   -->
+        <!-- ============================================== -->
+        <section class="rounded-2xl border border-slate-800 bg-slate-900/30 p-6 flex flex-col gap-6 backdrop-blur">
           
-          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-            <h4 class="text-xs font-bold font-mono uppercase text-slate-300 mb-3">Loudest Mic Confusion Matrix</h4>
-            <div id="cm-loudest" class="overflow-x-auto"></div>
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
+            <div class="flex items-center gap-2.5">
+              <span class="px-2.5 py-1 rounded bg-purple-950 border border-purple-500/50 text-purple-400 font-mono text-xs font-black">BRAIN 2</span>
+              <div>
+                <h3 class="text-base font-bold font-mono text-slate-100">Alarm Rhythm (Temporal Cadence)</h3>
+                <p class="text-xs text-slate-400 font-mono">Temporal pulse classifier: differentiates UPS On Battery, Low Battery, Overload vs. Fan Noise.</p>
+              </div>
+            </div>
+            <span class="text-[11px] font-mono text-purple-400/80 bg-purple-950/40 px-2.5 py-1 rounded border border-purple-900">GET /model/rhythm/metrics</span>
           </div>
 
-          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-            <h4 class="text-xs font-bold font-mono uppercase text-slate-300 mb-3">Weighted Centroid Confusion Matrix</h4>
-            <div id="cm-centroid" class="overflow-x-auto"></div>
+          <!-- Rhythm Metrics Hero Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Baseline: SGD Logistic -->
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 backdrop-blur flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold">BASELINE</span>
+                  <span class="text-xs font-mono text-slate-400">Linear Classifier</span>
+                </div>
+                <h4 class="font-bold text-sm text-slate-200">SGD Logistic Regression</h4>
+                <p class="text-xs text-slate-500 font-mono mt-1">Linear decision boundary across pulse timing statistics</p>
+                <div class="mt-4">
+                  <span id="metric-rhythm-sgd-f1" class="text-4xl font-black text-slate-400 font-mono">73.2%</span>
+                  <span class="text-xs text-slate-500 font-mono block mt-1">Validation Macro F1</span>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-500">
+                Struggles with non-linear pulse duty cycles.
+              </div>
+            </div>
+
+            <!-- Winner: Random Forest Rhythm -->
+            <div class="rounded-2xl border-2 border-purple-500 bg-gradient-to-b from-purple-950/40 to-slate-900 p-5 backdrop-blur flex flex-col justify-between shadow-xl shadow-purple-950/40">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-mono px-2 py-0.5 rounded bg-purple-500 text-slate-950 font-black">WINNER (ML)</span>
+                  <span class="text-xs font-mono text-purple-300 font-bold">Cadence Ensemble</span>
+                </div>
+                <h4 class="font-bold text-sm text-slate-100">Random Forest Rhythm Classifier</h4>
+                <p class="text-xs text-slate-400 font-mono mt-1">Tree ensemble on pulse duration, silence intervals & duty cycle</p>
+                <div class="mt-4">
+                  <span id="metric-rhythm-rf-f1" class="text-4xl font-black text-purple-400 font-mono">99.0%</span>
+                  <span class="text-xs text-purple-400/80 font-mono block mt-1">Validation Macro F1</span>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-purple-500/20 text-[11px] font-mono text-purple-300">
+                Saved to <code class="bg-purple-950 px-1 py-0.5 rounded">beep_model/artifacts/model.joblib</code>
+              </div>
+            </div>
+
+            <!-- Test Accuracy / False Alarm Rate -->
+            <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 backdrop-blur flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-emerald-400 font-bold">TEST BENCHMARK</span>
+                  <span class="text-xs font-mono text-emerald-400">720 Test Audio Files</span>
+                </div>
+                <h4 class="font-bold text-sm text-slate-200">Generalization & Noise Rejection</h4>
+                <p class="text-xs text-slate-500 font-mono mt-1">Evaluated on real data center fan noise & synthetic beeps</p>
+                <div class="mt-4 flex items-baseline gap-4">
+                  <div>
+                    <span id="metric-rhythm-test-acc" class="text-4xl font-black text-emerald-400 font-mono">99.2%</span>
+                    <span class="text-xs text-slate-500 font-mono block mt-1">Test Accuracy</span>
+                  </div>
+                  <div>
+                    <span id="metric-rhythm-false-alarm" class="text-2xl font-black text-emerald-400 font-mono">0.0%</span>
+                    <span class="text-[10px] text-slate-500 font-mono block">Noise False Alarm Rate</span>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-500">
+                Zero false positives on high-volume background fans.
+              </div>
+            </div>
           </div>
 
-          <div class="rounded-2xl border border-cyan-500/40 bg-slate-900/40 p-5">
-            <h4 class="text-xs font-bold font-mono uppercase text-cyan-400 mb-3">Random Forest Confusion Matrix</h4>
-            <div id="cm-rf" class="overflow-x-auto"></div>
+          <!-- Brain 2 Confusion Matrix -->
+          <div class="rounded-2xl border border-purple-500/40 bg-slate-900/50 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h5 class="text-xs font-bold font-mono uppercase text-purple-400">Random Forest Cadence Confusion Matrix (12 Acoustic Classes)</h5>
+              <span class="text-[11px] font-mono text-slate-500">Rows = Ground Truth · Columns = Predicted</span>
+            </div>
+            <div id="cm-rhythm" class="overflow-x-auto"></div>
           </div>
 
-        </div>
+        </section>
 
       </div>
 

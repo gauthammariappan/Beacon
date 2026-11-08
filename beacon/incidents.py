@@ -77,7 +77,13 @@ class CadenceTracker:
 
         Returns alarm dict if cadence is locked, or None if still accumulating.
         """
-        now = time.time() if timestamp is None else float(timestamp)
+        if event is not None and hasattr(event, "get") and event.get("t_end"):
+            now = float(event.get("t_end"))
+        elif timestamp is not None:
+            now = float(timestamp)
+        else:
+            now = time.time()
+
         dur_ms = 200.0
         if event is not None:
             if isinstance(event, dict):
@@ -98,6 +104,29 @@ class CadenceTracker:
             }
 
         # 2. If 2 or more beeps observed, check intervals
+        if len(self.beep_timestamps) >= 2:
+            gaps = [
+                self.beep_timestamps[i] - self.beep_timestamps[i - 1]
+                for i in range(1, len(self.beep_timestamps))
+            ]
+            last_gap = gaps[-1]
+
+            # Rapid beeping (< 1.0 s gap)
+            if last_gap < 1.0:
+                return {
+                    "meaning": "UPS Low Battery",
+                    "device": "UPS",
+                    "pattern": "P2",
+                    "action": "Shed load or start graceful shutdown",
+                }
+
+            # Standard battery cadence (burst of beeps, e.g. every 2-5 s in demo)
+            return {
+                "meaning": "UPS On Battery",
+                "device": "UPS",
+                "pattern": "P1",
+                "action": "Check upstream power / generator",
+            }
         if len(self.beep_timestamps) >= 2:
             gaps = [
                 self.beep_timestamps[i] - self.beep_timestamps[i - 1]
@@ -202,8 +231,10 @@ class IncidentManager:
 
         # Step 2: Spatial location lock -> LOCATED
         if location_result is not None:
-            incident.rack = location_result.get("rack", incident.rack)
-            incident.confidence = float(location_result.get("confidence", incident.confidence))
+            # Lock rack once IDENTIFIED or ACKNOWLEDGED to prevent replay/noise overwrites
+            if incident.state in (IncidentState.DETECTED, IncidentState.LOCATED):
+                incident.rack = location_result.get("rack", incident.rack)
+                incident.confidence = float(location_result.get("confidence", incident.confidence))
             if "runner_up" in location_result:
                 incident.runner_up = location_result["runner_up"]
 
@@ -213,9 +244,9 @@ class IncidentManager:
 
         # Step 3: Cadence lock -> IDENTIFIED
         if alarm_result is not None and "meaning" in alarm_result:
-            incident.alarm = alarm_result
             # Transition to IDENTIFIED if not already ACKNOWLEDGED or CLEARED
             if incident.state in (IncidentState.DETECTED, IncidentState.LOCATED):
+                incident.alarm = alarm_result
                 incident.state = IncidentState.IDENTIFIED
 
         return incident

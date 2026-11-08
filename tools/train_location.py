@@ -147,6 +147,9 @@ def load_dataset_from_csv(
                     elif cells[-1] in CLASSES:
                         label_candidate = cells[-1]
                         line_str = f"E,{','.join(cells[:-1])}"
+                    elif len(cells) >= 12 and cells[1] in CLASSES:
+                        label_candidate = cells[1]
+                        line_str = f"E,{','.join(cells[2:])}"
 
             if label_candidate and label_candidate in CLASSES:
                 if label_candidate != current_label and sp.is_beep_active:

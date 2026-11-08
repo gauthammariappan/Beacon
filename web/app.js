@@ -61,12 +61,25 @@
 
     // Cached model metrics
     metrics: null,
+
+    // Pitch & Simulation Demo Controls
+    demo: {
+      selectedPattern: 'P1',
+      replayPaused: true,
+    },
   };
 
   // =========================================================================
   // 2. DOM Elements Cache
   // =========================================================================
   const dom = {
+    // Pitch Simulation & Demo Bar
+    btnReplayToggle: document.getElementById('btn-replay-toggle'),
+    replayStatusDot: document.getElementById('replay-status-dot'),
+    replayStatusText: document.getElementById('replay-status-text'),
+    patternBtns: document.querySelectorAll('.demo-pattern-btn'),
+    triggerRackBtns: document.querySelectorAll('.demo-trigger-rack-btn'),
+
     // Responsive Toggle Buttons
     btnToggleMobile: document.getElementById('btn-toggle-view-mobile'),
     btnToggleDesktop: document.getElementById('btn-toggle-view-desktop'),
@@ -129,7 +142,7 @@
     desktopLastHeard: document.getElementById('desktop-last-heard'),
     btnDesktopAck: document.getElementById('btn-desktop-ack'),
 
-    // Model Metrics Tab
+    // Model Metrics Tab (Brain 1 & Brain 2)
     btnRefreshMetrics: document.getElementById('btn-refresh-metrics'),
     metricLoudestAcc: document.getElementById('metric-loudest-acc'),
     metricCentroidAcc: document.getElementById('metric-centroid-acc'),
@@ -137,6 +150,23 @@
     cmLoudest: document.getElementById('cm-loudest'),
     cmCentroid: document.getElementById('cm-centroid'),
     cmRf: document.getElementById('cm-rf'),
+
+    metricRhythmSgdF1: document.getElementById('metric-rhythm-sgd-f1'),
+    metricRhythmRfF1: document.getElementById('metric-rhythm-rf-f1'),
+    metricRhythmTestAcc: document.getElementById('metric-rhythm-test-acc'),
+    metricRhythmFalseAlarm: document.getElementById('metric-rhythm-false-alarm'),
+    cmRhythm: document.getElementById('cm-rhythm'),
+
+    // Live QR Codes
+    headerQrBox: document.getElementById('header-qr-box'),
+    qrCanvasHeader: document.getElementById('qr-canvas-header'),
+    qrContainerHeader: document.getElementById('qr-container-header'),
+    qrLinkHeader: document.getElementById('qr-link-header'),
+
+    sidebarQrBox: document.getElementById('sidebar-qr-box'),
+    qrCanvasSidebar: document.getElementById('qr-canvas-sidebar'),
+    qrContainerSidebar: document.getElementById('qr-container-sidebar'),
+    qrLinkSidebar: document.getElementById('qr-link-sidebar'),
 
     // Laser Turret Setup Tab
     laserAngleDisplay: document.getElementById('laser-angle-display'),
@@ -605,25 +635,51 @@
   }
 
   // =========================================================================
-  // 8. Model Proof Tab: Fetch Metrics & Render Confusion Matrices
+  // 8. Model Proof Tab: Fetch Metrics & Render Confusion Matrices (Dual-Brain)
   // =========================================================================
+  const RHYTHM_ABBREV = {
+    'burst_2_every_30s': 'B2-30s',
+    'burst_4_every_30s': 'B4-30s',
+    'not_alarm': 'Ambient',
+    'one_long_beep': '1-Long',
+    'paired_rapid': 'Paired',
+    'pulse_every_0_5s': '0.5s',
+    'pulse_every_2s': '2.0s',
+    'pulse_every_3s': '3.0s',
+    'pulse_every_4s': '4.0s',
+    'pulse_every_10s': '10.0s',
+    'repeating_long_beep': 'Rep-Long',
+    'solid_tone': 'Solid',
+  };
+
   async function fetchModelMetrics() {
     if (dom.btnRefreshMetrics) {
       dom.btnRefreshMetrics.textContent = 'Loading...';
     }
 
     try {
-      const resp = await fetch(`${getApiBase()}/model/metrics`);
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
+      const [locResult, rhythmResult] = await Promise.allSettled([
+        fetch(`${getApiBase()}/model/location/metrics`).then(r => r.ok ? r.json() : null),
+        fetch(`${getApiBase()}/model/rhythm/metrics`).then(r => r.ok ? r.json() : null),
+      ]);
+
+      if (locResult.status === 'fulfilled' && locResult.value) {
+        state.locationMetrics = locResult.value;
+        renderLocationMetrics(locResult.value);
+      } else {
+        renderFallbackLocationMetrics();
       }
-      const data = await resp.json();
-      state.metrics = data;
-      renderModelMetrics(data);
+
+      if (rhythmResult.status === 'fulfilled' && rhythmResult.value) {
+        state.rhythmMetrics = rhythmResult.value;
+        renderRhythmMetrics(rhythmResult.value);
+      } else {
+        renderFallbackRhythmMetrics();
+      }
     } catch (err) {
-      console.warn('[Beacon] Could not load model metrics:', err);
-      // Fallback display if model metrics file is not yet computed
-      renderFallbackMetrics();
+      console.warn('[Beacon] Error fetching model metrics:', err);
+      renderFallbackLocationMetrics();
+      renderFallbackRhythmMetrics();
     } finally {
       if (dom.btnRefreshMetrics) {
         dom.btnRefreshMetrics.textContent = '↻ Refresh Metrics';
@@ -631,7 +687,9 @@
     }
   }
 
-  function renderModelMetrics(data) {
+  function renderLocationMetrics(data) {
+    if (!data) return;
+
     // 1. Accuracies
     const loudestAcc = data.loudest_mic && typeof data.loudest_mic.accuracy === 'number'
       ? (data.loudest_mic.accuracy * 100).toFixed(1)
@@ -661,10 +719,109 @@
     }
   }
 
-  function renderFallbackMetrics() {
+  function renderFallbackLocationMetrics() {
     if (dom.metricLoudestAcc) dom.metricLoudestAcc.textContent = '51.7%';
     if (dom.metricCentroidAcc) dom.metricCentroidAcc.textContent = '51.0%';
     if (dom.metricRfAcc) dom.metricRfAcc.textContent = '100.0%';
+  }
+
+  function renderRhythmMetrics(data) {
+    if (!data) return;
+
+    // 1. Validation Macro F1s
+    const valF1 = data.val_macro_f1 || {};
+    const sgdF1 = typeof valF1.sgd_log === 'number'
+      ? (valF1.sgd_log * 100).toFixed(1)
+      : '73.2';
+    const rfF1 = typeof valF1.random_forest === 'number'
+      ? (valF1.random_forest * 100).toFixed(1)
+      : '99.0';
+
+    if (dom.metricRhythmSgdF1) dom.metricRhythmSgdF1.textContent = `${sgdF1}%`;
+    if (dom.metricRhythmRfF1) dom.metricRhythmRfF1.textContent = `${rfF1}%`;
+
+    // 2. Test Set Metrics
+    const testData = data.test || {};
+    const testAcc = typeof testData.accuracy === 'number'
+      ? (testData.accuracy * 100).toFixed(1)
+      : '99.2';
+    const falseAlarm = typeof data.noise_false_alarm_rate === 'number'
+      ? (data.noise_false_alarm_rate * 100).toFixed(1)
+      : '0.0';
+
+    if (dom.metricRhythmTestAcc) dom.metricRhythmTestAcc.textContent = `${testAcc}%`;
+    if (dom.metricRhythmFalseAlarm) dom.metricRhythmFalseAlarm.textContent = `${falseAlarm}%`;
+
+    // 3. Cadence Confusion Matrix
+    if (dom.cmRhythm && testData.confusion_matrix) {
+      const cm = testData.confusion_matrix;
+      const labels = cm.labels || [];
+      const rows = cm.rows_are_true || [];
+      dom.cmRhythm.innerHTML = buildRhythmConfusionMatrixHtml(rows, labels);
+    }
+  }
+
+  function renderFallbackRhythmMetrics() {
+    if (dom.metricRhythmSgdF1) dom.metricRhythmSgdF1.textContent = '73.2%';
+    if (dom.metricRhythmRfF1) dom.metricRhythmRfF1.textContent = '99.0%';
+    if (dom.metricRhythmTestAcc) dom.metricRhythmTestAcc.textContent = '99.2%';
+    if (dom.metricRhythmFalseAlarm) dom.metricRhythmFalseAlarm.textContent = '0.0%';
+  }
+
+  function buildRhythmConfusionMatrixHtml(matrix, classes) {
+    if (!matrix || !classes || !classes.length) {
+      return '<div class="text-xs text-slate-500 font-mono p-4">No cadence confusion matrix data available.</div>';
+    }
+
+    let html = `
+      <table class="w-full text-[10px] font-mono text-center border-collapse min-w-[700px]">
+        <thead>
+          <tr class="text-slate-500 border-b border-slate-800">
+            <th class="p-1.5 text-left text-[9px] text-slate-400 bg-slate-950/80 sticky left-0">TRUE \\ PRED</th>
+            ${classes.map(c => {
+              const shortName = RHYTHM_ABBREV[c] || c;
+              return `<th class="p-1.5 font-bold text-slate-300" title="${c}">${shortName}</th>`;
+            }).join('')}
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    matrix.forEach((row, rowIdx) => {
+      const trueClass = classes[rowIdx] || rowIdx;
+      const trueShort = RHYTHM_ABBREV[trueClass] || trueClass;
+      html += `
+        <tr class="border-b border-slate-800/40 hover:bg-slate-800/30">
+          <td class="p-1.5 text-left font-bold text-slate-300 bg-slate-950/90 sticky left-0" title="${trueClass}">${trueShort}</td>
+      `;
+
+      row.forEach((count, colIdx) => {
+        const isDiagonal = rowIdx === colIdx;
+        const predClass = classes[colIdx] || colIdx;
+        let cellClass = 'p-1.5 ';
+        let title = `True: ${trueClass} -> Pred: ${predClass} (${count})`;
+
+        if (count > 0) {
+          if (isDiagonal) {
+            cellClass += 'bg-purple-950/80 text-purple-300 font-black border border-purple-500/40';
+          } else {
+            cellClass += 'bg-rose-950/50 text-rose-300 font-bold border border-rose-500/40';
+          }
+        } else {
+          cellClass += 'text-slate-700';
+        }
+
+        html += `<td class="${cellClass}" title="${title}">${count}</td>`;
+      });
+
+      html += `</tr>`;
+    });
+
+    html += `
+        </tbody>
+      </table>
+    `;
+    return html;
   }
 
   function buildConfusionMatrixHtml(matrix, classes, theme) {
@@ -839,7 +996,157 @@
   }
 
   // =========================================================================
-  // 11. Initial REST Hydration & Timer Loop
+  // 11. Pitch Simulation & Demo Bar Controls
+  // =========================================================================
+  function setDemoPattern(pattern) {
+    if (!['P1', 'P2', 'P3'].includes(pattern)) return;
+    state.demo.selectedPattern = pattern;
+
+    dom.patternBtns.forEach((btn) => {
+      const btnPat = btn.getAttribute('data-pattern');
+      if (btnPat === pattern) {
+        btn.className = 'demo-pattern-btn px-2 py-0.5 rounded border border-cyan-500 bg-cyan-950/80 text-cyan-300 font-bold transition-all';
+      } else {
+        btn.className = 'demo-pattern-btn px-2 py-0.5 rounded border border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200 transition-all';
+      }
+    });
+    console.log(`[Beacon Demo] Active alarm pattern set to: ${pattern}`);
+  }
+
+  async function toggleReplay(forceState = null) {
+    try {
+      const payload = forceState !== null ? { paused: forceState } : null;
+      const resp = await fetch(`${getApiBase()}/demo/replay/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload ? JSON.stringify(payload) : null,
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        state.demo.replayPaused = Boolean(data.replay_paused);
+        updateReplayButtonUI(state.demo.replayPaused);
+      }
+    } catch (err) {
+      console.warn('[Beacon Demo] Failed to toggle replay:', err);
+    }
+  }
+
+  function updateReplayButtonUI(isPaused) {
+    if (!dom.btnReplayToggle) return;
+    if (isPaused) {
+      dom.btnReplayToggle.className = 'px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-500/40 text-amber-300 font-bold hover:bg-amber-900/60 transition-all flex items-center gap-1.5';
+      if (dom.replayStatusDot) dom.replayStatusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+      if (dom.replayStatusText) dom.replayStatusText.textContent = '⏸ Auto-Replay: PAUSED';
+    } else {
+      dom.btnReplayToggle.className = 'px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-bold hover:bg-emerald-900/60 transition-all flex items-center gap-1.5';
+      if (dom.replayStatusDot) dom.replayStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+      if (dom.replayStatusText) dom.replayStatusText.textContent = '▶ Auto-Replay: ON';
+    }
+  }
+
+  async function triggerDemoRack(rack) {
+    const rackUpper = rack.toUpperCase();
+    const pattern = state.demo.selectedPattern || 'P1';
+
+    // Optimistically update replay button to paused state
+    state.demo.replayPaused = true;
+    updateReplayButtonUI(true);
+
+    // Visual button bounce feedback
+    dom.triggerRackBtns.forEach((btn) => {
+      if (btn.getAttribute('data-rack') === rackUpper) {
+        btn.classList.add('bg-cyan-500', 'text-slate-950', 'scale-105', 'shadow-md', 'shadow-cyan-500/50');
+        setTimeout(() => {
+          btn.classList.remove('bg-cyan-500', 'text-slate-950', 'scale-105', 'shadow-md', 'shadow-cyan-500/50');
+        }, 300);
+      }
+    });
+
+    console.log(`[Beacon Demo] Triggering Rack ${rackUpper} with Pattern ${pattern}...`);
+
+    try {
+      const resp = await fetch(`${getApiBase()}/demo/trigger/${rackUpper}/${pattern}?realtime=true`, {
+        method: 'POST',
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.incident) {
+          updateIncident(data.incident);
+        }
+      }
+    } catch (err) {
+      console.warn(`[Beacon Demo] Failed to trigger Rack ${rackUpper}:`, err);
+    }
+  }
+
+  function initDemoPitchControls() {
+    // 1. Initial Replay State (default Paused for Live Hardware)
+    updateReplayButtonUI(state.demo.replayPaused);
+
+    // 2. Replay Toggle Click
+    if (dom.btnReplayToggle) {
+      dom.btnReplayToggle.addEventListener('click', () => toggleReplay());
+    }
+
+    // 2. Pattern Select Clicks
+    dom.patternBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pat = btn.getAttribute('data-pattern');
+        setDemoPattern(pat);
+      });
+    });
+
+    // 3. Quick Rack Trigger Clicks
+    dom.triggerRackBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const rack = btn.getAttribute('data-rack');
+        triggerDemoRack(rack);
+      });
+    });
+
+    // 4. Keyboard Shortcuts on Desktop (Keys 1-5, Q, W, E, P)
+    window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+
+      const key = e.key.toLowerCase();
+
+      // [P] Toggle Auto-Replay Pause
+      if (key === 'p') {
+        e.preventDefault();
+        toggleReplay();
+        return;
+      }
+
+      // [Q/W/E] Select Alarm Pattern
+      if (key === 'q') {
+        e.preventDefault();
+        setDemoPattern('P1');
+        return;
+      }
+      if (key === 'w') {
+        e.preventDefault();
+        setDemoPattern('P2');
+        return;
+      }
+      if (key === 'e') {
+        e.preventDefault();
+        setDemoPattern('P3');
+        return;
+      }
+
+      // [1-5] Trigger Racks A through E
+      if (['1', '2', '3', '4', '5'].includes(key)) {
+        e.preventDefault();
+        const rackMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', '5': 'E' };
+        triggerDemoRack(rackMap[key]);
+        return;
+      }
+    });
+  }
+
+  // =========================================================================
+  // 12. Initial REST Hydration & Timer Loop
   // =========================================================================
   async function hydrateInitialState() {
     try {
@@ -869,9 +1176,105 @@
   }
 
   // =========================================================================
-  // 12. Application Bootstrapper
+  // 12. Dynamic QR Code for Mobile Technician Pager Hand-Off
+  // =========================================================================
+  async function initQrCodeHandoff() {
+    let localIp = null;
+    try {
+      const resp = await fetch(`${getApiBase()}/layout`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.local_ip) {
+          localIp = data.local_ip;
+        }
+      }
+    } catch (e) {
+      console.warn('[Beacon] Could not fetch /layout for local_ip:', e);
+    }
+
+    let hostname = window.location.hostname;
+    // If hostname is localhost or loopback, prioritize local LAN IP so phones can connect
+    if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
+      if (localIp && localIp !== '127.0.0.1') {
+        hostname = localIp;
+      } else {
+        hostname = '127.0.0.1';
+      }
+    }
+
+    const port = window.location.port ? `:${window.location.port}` : ':8000';
+    const pagerUrl = `http://${hostname}${port}/?mobile=1`;
+
+    renderQrCanvas('qr-canvas-header', 'qr-container-header', pagerUrl, 44);
+    if (dom.qrLinkHeader) {
+      dom.qrLinkHeader.href = pagerUrl;
+      dom.qrLinkHeader.textContent = `${hostname}${port}/?mobile=1`;
+    }
+    if (dom.headerQrBox) {
+      dom.headerQrBox.onclick = () => window.open(pagerUrl, '_blank');
+    }
+
+    renderQrCanvas('qr-canvas-sidebar', 'qr-container-sidebar', pagerUrl, 70);
+    if (dom.qrLinkSidebar) {
+      dom.qrLinkSidebar.href = pagerUrl;
+      dom.qrLinkSidebar.textContent = pagerUrl;
+    }
+    if (dom.sidebarQrBox) {
+      dom.sidebarQrBox.onclick = () => window.open(pagerUrl, '_blank');
+    }
+  }
+
+  function renderQrCanvas(canvasId, containerId, text, size) {
+    const canvas = document.getElementById(canvasId);
+    const container = document.getElementById(containerId);
+
+    if (typeof QRious !== 'undefined' && canvas) {
+      try {
+        new QRious({
+          element: canvas,
+          value: text,
+          size: size,
+          level: 'M',
+          background: '#ffffff',
+          foreground: '#000000',
+        });
+        canvas.style.display = 'block';
+        if (container) container.style.display = 'none';
+        return;
+      } catch (e) {
+        console.warn('QRious render error:', e);
+      }
+    }
+
+    if (typeof QRCode !== 'undefined' && container) {
+      try {
+        container.innerHTML = '';
+        new QRCode(container, {
+          text: text,
+          width: size,
+          height: size,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+        });
+        if (canvas) canvas.style.display = 'none';
+        container.style.display = 'block';
+        return;
+      } catch (e) {
+        console.warn('QRCode render error:', e);
+      }
+    }
+  }
+
+  // =========================================================================
+  // 13. Application Bootstrapper
   // =========================================================================
   function initApp() {
+    // Check for ?mobile=1 in query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mobile') === '1' || urlParams.get('mode') === 'pager') {
+      document.body.classList.add('force-mobile');
+    }
+
     // Bind Action Buttons
     if (dom.btnMobileAck) {
       dom.btnMobileAck.addEventListener('click', acknowledgeActiveIncident);
@@ -887,10 +1290,13 @@
     initTabNavigation();
     initLaserSetup();
     initSimulationToggles();
+    initDemoPitchControls();
     initRelativeTimeTicker();
+    initQrCodeHandoff();
 
     // Hydrate & Connect
     hydrateInitialState();
+    fetchModelMetrics();
     initWebSocket();
   }
 

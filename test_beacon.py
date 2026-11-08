@@ -59,18 +59,24 @@ class TestBeaconSignalAndFeatures(unittest.TestCase):
         self.assertEqual(features.shape, (19,))
         self.assertEqual(features.dtype, np.float64)
 
-        # 1. 3 average 2500Hz energies
+        # 1. 3 average 2500Hz energies (raw)
         self.assertTrue(np.allclose(features[0:3], [200.0, 100.0, 50.0]))
 
-        # 2. 3 shares (each / total)
-        self.assertTrue(np.allclose(features[3:6], [200.0 / 350.0, 100.0 / 350.0, 50.0 / 350.0]))
+        # 2. 3 normalized shares (normalized_energy = [200/20, 100/10, 50/5] = [10, 10, 10])
+        self.assertTrue(np.allclose(features[3:6], [1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0]))
         self.assertTrue(np.isclose(np.sum(features[3:6]), 1.0))
 
-        # 3. 3 log ratios: log(L/M), log(M/R), log(L/R)
-        self.assertTrue(np.isclose(features[6], np.log(200.0 / 100.0)))
-        self.assertTrue(np.isclose(features[7], np.log(100.0 / 50.0)))
-        self.assertTrue(np.isclose(features[8], np.log(200.0 / 50.0)))
-        self.assertTrue(np.isclose(features[8], features[6] + features[7]))
+        # 3. 3 normalized log ratios: log(10/10)=0, log(10/10)=0, log(10/10)=0
+        self.assertTrue(np.isclose(features[6], 0.0))
+        self.assertTrue(np.isclose(features[7], 0.0))
+        self.assertTrue(np.isclose(features[8], 0.0))
+
+        # Also verify symmetric noise floor retains unskewed spatial shares and log-ratios
+        features_eq = extract_spatial_features(active_frames, np.array([10.0, 10.0, 10.0]))
+        self.assertTrue(np.allclose(features_eq[3:6], [200.0 / 350.0, 100.0 / 350.0, 50.0 / 350.0]))
+        self.assertTrue(np.isclose(features_eq[6], np.log(200.0 / 100.0)))
+        self.assertTrue(np.isclose(features_eq[7], np.log(100.0 / 50.0)))
+        self.assertTrue(np.isclose(features_eq[8], np.log(200.0 / 50.0)))
 
         # 4. 3 peak energies
         self.assertTrue(np.allclose(features[9:12], [300.0, 150.0, 75.0]))
@@ -160,6 +166,45 @@ class TestBeaconSignalAndFeatures(unittest.TestCase):
 
         # Frame after blanking at 1360 ms (>= 1350) should be PROCESSED
         sp.process_line("E,1360,100,100,100,2,2,2,2,2,2")
+        self.assertTrue(sp.is_beep_active)
+
+    def test_process_frame_blanking_with_t_ms(self):
+        sp = SignalProcessor(alpha=0.02, initial_noise_floor=[10.0, 10.0, 10.0])
+        # Initial quiet frame establishes last_ms = 2000.0
+        frame0 = {
+            "t_ms": 2000.0,
+            "L25": 10.0, "M25": 10.0, "R25": 10.0,
+            "L20": 10.0, "M20": 10.0, "R20": 10.0,
+            "L30": 10.0, "M30": 10.0, "R30": 10.0,
+        }
+        sp.process_frame(frame0)
+        self.assertEqual(sp.last_ms, 2000.0)
+
+        # Trigger acoustic blanking for 350 ms -> blank until 2350.0 ms
+        sp.trigger_blanking(350)
+        self.assertEqual(sp.blank_until_ms, 2350.0)
+
+        # Loud frame within blanking interval (t_ms = 2200 < 2350) MUST be dropped
+        loud_frame = {
+            "t_ms": 2200.0,
+            "L25": 200.0, "M25": 200.0, "R25": 200.0,
+            "L20": 2.0, "M20": 2.0, "R20": 2.0,
+            "L30": 2.0, "M30": 2.0, "R30": 2.0,
+        }
+        res = sp.process_frame(loud_frame)
+        self.assertIsNone(res)
+        self.assertFalse(sp.is_beep_active)
+        self.assertTrue(np.allclose(sp.noise_floor, [10.0, 10.0, 10.0]))
+
+        # Another loud frame still within blanking interval (t_ms = 2340 < 2350)
+        loud_frame_2 = dict(loud_frame, t_ms=2340.0)
+        res2 = sp.process_frame(loud_frame_2)
+        self.assertIsNone(res2)
+        self.assertFalse(sp.is_beep_active)
+
+        # Loud frame past blanking interval (t_ms = 2360 >= 2350) is processed normally
+        post_blank_frame = dict(loud_frame, t_ms=2360.0)
+        sp.process_frame(post_blank_frame)
         self.assertTrue(sp.is_beep_active)
 
     def test_schmitt_trigger_no_false_alarm_on_broadband_noise(self):

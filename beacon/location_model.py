@@ -65,6 +65,11 @@ class LocationClassifier:
         if resolved_path is not None and resolved_path.exists():
             self.load(resolved_path)
 
+    def reset(self) -> None:
+        """Reset running vote across consecutive beeps."""
+        self.running_vote = None
+        self.beeps_count = 0
+
     def load(self, model_path: Path | str) -> None:
         """Load trained model bundle from joblib file."""
         path = Path(model_path)

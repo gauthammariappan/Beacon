@@ -1,10 +1,19 @@
 """Unit tests for Beacon v2.1 incident manager and FastAPI server."""
 
 import unittest
+import asyncio
 from fastapi.testclient import TestClient
 
 from beacon.incidents import IncidentManager, IncidentState
-from beacon.server import app, incident_manager, handle_serial_line
+from beacon.server import (
+    app,
+    incident_manager,
+    handle_serial_line,
+    aim_turret_at_rack,
+    load_aim_points,
+    signal_processor,
+)
+import beacon.server as server_mod
 
 
 class TestIncidentsAndServer(unittest.TestCase):
@@ -66,13 +75,26 @@ class TestIncidentsAndServer(unittest.TestCase):
         self.assertEqual(mic_ids, ["L", "M", "R"])
 
     def test_get_model_metrics_route(self):
-        resp = self.client.get("/model/metrics")
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        self.assertIn("loudest_mic", data)
-        self.assertIn("weighted_centroid", data)
-        self.assertIn("random_forest", data)
-        self.assertIn("classes", data)
+        # 1. Test /model/location/metrics (and legacy /model/metrics alias)
+        resp_loc = self.client.get("/model/location/metrics")
+        self.assertEqual(resp_loc.status_code, 200)
+        data_loc = resp_loc.json()
+        self.assertIn("loudest_mic", data_loc)
+        self.assertIn("weighted_centroid", data_loc)
+        self.assertIn("random_forest", data_loc)
+        self.assertIn("classes", data_loc)
+
+        resp_alias = self.client.get("/model/metrics")
+        self.assertEqual(resp_alias.status_code, 200)
+        self.assertEqual(resp_alias.json()["classes"], data_loc["classes"])
+
+        # 2. Test /model/rhythm/metrics (teammate's cadence Brain 2)
+        resp_rhythm = self.client.get("/model/rhythm/metrics")
+        self.assertEqual(resp_rhythm.status_code, 200)
+        data_rhythm = resp_rhythm.json()
+        self.assertIn("val_macro_f1", data_rhythm)
+        self.assertIn("test", data_rhythm)
+        self.assertIn("confusion_matrix", data_rhythm["test"])
 
     def test_acknowledge_route(self):
         # Create an incident in the manager
@@ -152,6 +174,55 @@ class TestIncidentsAndServer(unittest.TestCase):
         self.assertEqual(resp_static_html.status_code, 200)
         resp_static_js = self.client.get("/web/app.js")
         self.assertEqual(resp_static_js.status_code, 200)
+
+    def test_demo_trigger_and_replay_toggle(self):
+        # 1. Toggle replay pause
+        resp_toggle = self.client.post("/demo/replay/toggle", json={"paused": True})
+        self.assertEqual(resp_toggle.status_code, 200)
+        self.assertTrue(resp_toggle.json().get("replay_paused"))
+
+        # 2. Trigger demo sequence for Rack B with Pattern P1
+        resp_trigger = self.client.post("/demo/trigger/B/P1")
+        self.assertEqual(resp_trigger.status_code, 200)
+        data = resp_trigger.json()
+        self.assertEqual(data.get("rack"), "B")
+        self.assertEqual(data.get("pattern"), "P1")
+        self.assertTrue(data.get("replay_paused"))
+
+        # Verify incident in manager transitioned to Rack B and identified P1 cleanly
+        active = incident_manager.get_active_incident()
+        self.assertIsNotNone(active)
+        self.assertEqual(active.rack, "B")
+        self.assertEqual(active.state, IncidentState.IDENTIFIED)
+        self.assertEqual(active.alarm.get("meaning"), "UPS On Battery")
+        self.assertEqual(active.alarm.get("pattern"), "P1")
+
+    def test_aim_controller_and_blanking_hook(self):
+        # 1. Pan angles loaded from config/aim_points.json
+        angles = load_aim_points()
+        self.assertEqual(angles.get("A"), 35.0)
+        self.assertEqual(angles.get("B"), 62.0)
+        self.assertEqual(angles.get("C"), 90.0)
+        self.assertEqual(angles.get("D"), 118.0)
+        self.assertEqual(angles.get("E"), 145.0)
+
+        # 2. Reset signal processor and server state
+        signal_processor.reset()
+        signal_processor.process_line("E,1000,10,10,10,10,10,10,10,10,10")
+        self.assertEqual(signal_processor.last_ms, 1000.0)
+
+        # 3. Call aim_turret_at_rack("D") inside an event loop
+        async def run_aim():
+            await aim_turret_at_rack("D")
+            self.assertEqual(server_mod.last_aimed_rack, "D")
+            # Verify 350ms acoustic blanking was triggered
+            self.assertEqual(signal_processor.blank_until_ms, 1350.0)
+            # Verify laser timer task was spawned and is active
+            self.assertIsNotNone(server_mod.laser_off_task)
+            self.assertFalse(server_mod.laser_off_task.done())
+            server_mod.laser_off_task.cancel()
+
+        asyncio.run(run_aim())
 
 
 if __name__ == "__main__":

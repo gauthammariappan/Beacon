@@ -84,29 +84,33 @@ def extract_spatial_features(
         e2000_all = None
         e3000_all = None
 
-    # [1] 3 average 2500Hz energies
+    # [1] 3 average 2500Hz energies (raw)
     avg_2500 = np.mean(e2500_all, axis=0)  # shape (3,)
 
-    # [2] 3 shares (each / total)
-    total_avg_2500 = float(np.sum(avg_2500))
-    if total_avg_2500 > eps:
-        shares = avg_2500 / total_avg_2500
+    # Hardware gain normalization via frozen noise floor:
+    # normalized_energy = avg_2500 / np.maximum(noise_floor, 1e-6)
+    safe_nf = np.maximum(nf, 1e-6)
+    normalized_energy = avg_2500 / safe_nf
+
+    # [2] 3 shares computed using normalized_energy instead of raw energy
+    total_norm = float(np.sum(normalized_energy))
+    if total_norm > eps:
+        shares = normalized_energy / total_norm
     else:
         shares = np.full(3, 1.0 / 3.0, dtype=np.float64)
 
-    # [3] 3 log ratios: log(L/M), log(M/R), log(L/R)
-    safe_avg = np.maximum(avg_2500, eps)
-    log_lm = np.log(safe_avg[0] / safe_avg[1])
-    log_mr = np.log(safe_avg[1] / safe_avg[2])
-    log_lr = np.log(safe_avg[0] / safe_avg[2])
-    log_ratios = np.array([log_lm, log_mr, log_lr], dtype=np.float64)
+    # [3] 3 log ratios using normalized_energy: [log(norm_L/norm_M), log(norm_M/norm_R), log(norm_L/norm_R)]
+    safe_norm = np.maximum(normalized_energy, 1e-6)
+    log_lm = float(np.log(safe_norm[0] / safe_norm[1]))
+    log_mr = float(np.log(safe_norm[1] / safe_norm[2]))
+    log_lr = float(np.log(safe_norm[0] / safe_norm[2]))
+    log_ratios = np.clip(np.array([log_lm, log_mr, log_lr], dtype=np.float64), -10.0, 10.0)
 
-    # [4] 3 peak energies
+    # [4] 3 peak energies (raw)
     peak_energies = np.max(e2500_all, axis=0)  # shape (3,)
 
     # [5] 3 SNRs in dB: 10 * log10(avg_energy / noise_floor)
-    safe_nf = np.maximum(nf, eps)
-    snr_db = 10.0 * np.log10(safe_avg / safe_nf)
+    snr_db = 10.0 * np.log10(np.maximum(avg_2500, eps) / safe_nf)
 
     # [6] 3 average purities: e2500 / avg(e2000, e3000)
     if e2000_all is not None and e3000_all is not None:
@@ -128,8 +132,8 @@ def extract_spatial_features(
 
     # [7] 1 duration in ms
     last_frame = active_frames[-1]
-    t0 = first_frame.get("ms", first_frame.get("timestamp", None))
-    t1 = last_frame.get("ms", last_frame.get("timestamp", None))
+    t0 = first_frame.get("t_ms", first_frame.get("ms", first_frame.get("timestamp", None)))
+    t1 = last_frame.get("t_ms", last_frame.get("ms", last_frame.get("timestamp", None)))
     if t0 is not None and t1 is not None:
         duration_ms = float(t1 - t0)
     else:

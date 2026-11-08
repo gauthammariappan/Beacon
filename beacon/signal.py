@@ -167,8 +167,16 @@ class SignalProcessor:
         self,
         alpha: float = 0.02,
         initial_noise_floor: np.ndarray | list[float] | float | None = None,
+        snr_threshold: float = 4.0,
+        purity_threshold: float = 2.0,
+        quiet_threshold_ratio: float = 2.0,
+        consecutive_quiet_required: int = 2,
     ) -> None:
         self.alpha: float = float(alpha)
+        self.snr_threshold: float = float(snr_threshold)
+        self.purity_threshold: float = float(purity_threshold)
+        self.quiet_threshold_ratio: float = float(quiet_threshold_ratio)
+        self.consecutive_quiet_required: int = int(consecutive_quiet_required)
         if initial_noise_floor is not None:
             nf = np.asarray(initial_noise_floor, dtype=np.float64)
             if nf.ndim == 0:
@@ -270,6 +278,7 @@ class SignalProcessor:
 
         frame: dict[str, Any] = {
             "ms": ms,
+            "t_ms": ms,
             "timestamp": ms,
             "L25": l25,
             "M25": m25,
@@ -322,7 +331,7 @@ class SignalProcessor:
             A completed BeepEvent when a beep ends; None otherwise.
         """
         # 1. Timestamp and Blanking evaluation
-        ms = frame.get("ms", frame.get("timestamp", None))
+        ms = frame.get("t_ms", frame.get("ms", frame.get("timestamp", None)))
 
         if ms is not None:
             ms = float(ms)
@@ -379,8 +388,8 @@ class SignalProcessor:
 
         # 4. Schmitt trigger logic
         if not self.is_beep_active:
-            # START condition: any mic is > 5x its noise floor with purity > 2.5
-            start_condition = (e2500 > 5.0 * self.noise_floor) & (purity > 2.5)
+            # START condition: any mic is > snr_threshold * noise_floor with purity > purity_threshold
+            start_condition = (e2500 > self.snr_threshold * self.noise_floor) & (purity > self.purity_threshold)
 
             if bool(np.any(start_condition)):
                 self.is_beep_active = True
@@ -399,12 +408,12 @@ class SignalProcessor:
             self._current_run_frames.append(frame)
             self.active_frames = self._current_run_frames
 
-            # END condition: all mics are < 2x noise floor for 2 consecutive frames (40 ms)
-            all_quiet = bool(np.all(e2500 < 2.0 * self.noise_floor))
+            # END condition: all mics are < quiet_threshold_ratio * noise_floor for consecutive_quiet_required frames
+            all_quiet = bool(np.all(e2500 < self.quiet_threshold_ratio * self.noise_floor))
 
             if all_quiet:
                 self._consecutive_quiet += 1
-                if self._consecutive_quiet >= 2:
+                if self._consecutive_quiet >= self.consecutive_quiet_required:
                     # Beep ENDs
                     self.is_beep_active = False
                     self._consecutive_quiet = 0
@@ -427,7 +436,7 @@ class SignalProcessor:
                     self._event_counter += 1
                     event_id = f"ev_{self._event_counter}"
 
-                    features = extract_spatial_features(active_beep_frames, self.noise_floor)
+                    features = extract_spatial_features(active_beep_frames, self.noise_floor.copy())
                     event = BeepEvent(
                         frames=active_beep_frames,
                         noise_floor=self.noise_floor.copy(),

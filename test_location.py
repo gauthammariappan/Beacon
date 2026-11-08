@@ -148,6 +148,28 @@ class TestLocationModel(unittest.TestCase):
         self.assertIn("uncertain", decision)
         self.assertEqual(decision["rack"], "A")
 
+    def test_real_recordings_dataset_segmentation(self):
+        from tools.train_location import load_dataset_from_csv
+        from beacon.signal import SignalProcessor
+        from collections import Counter
+
+        train_path = Path("recordings/session1_train.csv")
+        test_path = Path("recordings/session2_test.csv")
+        if train_path.exists() and test_path.exists():
+            sp_train = SignalProcessor(alpha=0.02, initial_noise_floor=[10.0, 10.0, 10.0])
+            X_tr, y_tr = load_dataset_from_csv(train_path, processor=sp_train)
+            self.assertEqual(len(y_tr), 240)
+            train_counts = Counter(y_tr)
+            for cls in CLASSES:
+                self.assertEqual(train_counts[cls], 40)
+
+            sp_test = SignalProcessor(alpha=0.02, initial_noise_floor=[10.0, 10.0, 10.0])
+            X_te, y_te = load_dataset_from_csv(test_path, processor=sp_test)
+            self.assertEqual(len(y_te), 150)
+            test_counts = Counter(y_te)
+            for cls in CLASSES:
+                self.assertEqual(test_counts[cls], 25)
+
 
 if __name__ == "__main__":
     unittest.main()
