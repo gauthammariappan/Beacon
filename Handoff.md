@@ -230,3 +230,4 @@ If the physical mics produce low signal-to-noise ratio in a very loud or damp ve
 - [ ] Beacon server running on `http://0.0.0.0:8000`.
 - [ ] Phone paired to mobile pager view via QR code on `10.173.171.63:8000`.
 - [ ] Demo pitch mode verified: background replay paused, laser turns off after 5 seconds, mobile Acknowledge button syncs live over WebSockets.
+
