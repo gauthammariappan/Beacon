@@ -1,0 +1,175 @@
+{
+  "sample_rate": 16000,
+  "window_s": 32.0,
+  "low_confidence": 0.55,
+  "assumptions": "Beep counts and repeat periods are the ones printed in the cited manuals. Beep length is usually not printed. For the CyberPower patterns, the synthesizer uses a wide timing band that contains the company's own example recording. Those WAVs are not part of the training set. A repeating long beep is only labeled as repeating when the clip actually contains two or more beeps.",
+  "classes": [
+    {
+      "id": "burst_4_every_30s",
+      "kind": "burst",
+      "beeps_per_burst": 4,
+      "beep_ms": [70, 220],
+      "intra_gap_ms": [70, 220],
+      "cycle_ms": [30000, 30000],
+      "meanings": [
+        "APC Smart-UPS and Back-UPS: on battery (4 beeps every 30 seconds)"
+      ],
+      "sources": [
+        "https://www.se.com/us/en/faqs/FA156554/",
+        "https://cdn.blueally.com/apcguard/datasheets/be750g.pdf"
+      ],
+      "notes": "Both APC pages specify four beeps every 30 seconds. They do not print the length of each beep."
+    },
+    {
+      "id": "burst_2_every_30s",
+      "kind": "burst",
+      "beeps_per_burst": 2,
+      "beep_ms": [160, 450],
+      "intra_gap_ms": [120, 500],
+      "cycle_ms": [30000, 30000],
+      "meanings": [
+        "CyberPower: on battery (two short beeps, then a pause; product manuals put the pause at 30 seconds)"
+      ],
+      "sources": [
+        "https://www.cyberpowersystems.com/blog/what-your-beeping-ups-is-telling-you/",
+        "https://www.manualsdir.com/manuals/868332/cyberpower-avrg750lcd-intelligent-lcd-ups-750va_450w.html?page=2"
+      ],
+      "notes": "The blog describes two short beeps followed by a pause. The AVRG750LCD manual says the unit beeps twice every 30 seconds. Beep length is not printed; the band above is wide enough to contain CyberPower's published example."
+    },
+    {
+      "id": "paired_rapid",
+      "kind": "paired",
+      "beep_ms": [70, 200],
+      "intra_gap_ms": [30, 150],
+      "pair_period_ms": [500, 1000],
+      "min_inter_silence_ms": 180,
+      "meanings": [
+        "CyberPower: low battery. The published example is a pair of beeps that repeats several times a second, until utility power returns or the battery is exhausted."
+      ],
+      "sources": [
+        "https://www.cyberpowersystems.com/blog/what-your-beeping-ups-is-telling-you/"
+      ],
+      "notes": "The blog text says 'rapid beep (every half-second)'. The example WAV is a repeating pair, so the class is a pair, not a single beep every 500 ms. The timing band is wide on purpose."
+    },
+    {
+      "id": "pulse_every_0_5s",
+      "kind": "pulse",
+      "beep_ms": [70, 180],
+      "cycle_ms": [500, 500],
+      "meanings": [
+        "APC Back-UPS: low battery (rapid beep every 1/2 second)",
+        "APC Smart-UPS: low battery (beeps continuously through the low-battery warning)",
+        "Tripp Lite SmartOnline: low battery, and also overload warning (both are one beep every 0.5 seconds)"
+      ],
+      "sources": [
+        "https://www.se.com/us/en/faqs/FA156554/",
+        "https://cdn.blueally.com/apcguard/datasheets/be750g.pdf",
+        "https://www.eaton.com/content/dam/eaton/products/backup-power-ups-surge-it-power-distribution/backup-power-ups/tripp-lite-series-smartonline/manuals/eaton-tripp-lite-series-smartonline-ups-SU1500LCD1U-SU2000LCD1U-tower-owners-manual.pdf"
+      ],
+      "notes": "SmartOnline uses the same half-second cadence for low battery and for an overload warning. Those two meanings cannot be separated from the rhythm alone. APC's 'beep continuously' during low battery is this rapid pulse, not the solid overload tone."
+    },
+    {
+      "id": "pulse_every_2s",
+      "kind": "pulse",
+      "beep_ms": [45, 160],
+      "cycle_ms": [2000, 2000],
+      "meanings": [
+        "APC Back-UPS BN-series: battery disconnected (chirp every 2 seconds)"
+      ],
+      "sources": [
+        "https://mans.io/files/viewer/1244098/6"
+      ],
+      "notes": "The BN1500-class manual says the unit chirps every 2 seconds when the battery is disconnected. Chirp length is not printed."
+    },
+    {
+      "id": "pulse_every_3s",
+      "kind": "pulse",
+      "beep_ms": [70, 220],
+      "cycle_ms": [3000, 3000],
+      "meanings": [
+        "Tripp Lite SmartPro: low battery (one beep every 3 seconds)"
+      ],
+      "sources": [
+        "https://www.eaton.com/content/dam/eaton/products/backup-power-ups-surge-it-power-distribution/backup-power-ups/tripp-lite-by-eaton-smartpro/guides/eaton-tripp-lite-series-smartpro-low-voltage-user-guide.pdf"
+      ]
+    },
+    {
+      "id": "pulse_every_4s",
+      "kind": "pulse",
+      "beep_ms": [45, 220],
+      "cycle_ms": [4000, 4000],
+      "meanings": [
+        "Tripp Lite SmartOnline: on battery (one beep every 4 seconds)",
+        "APC Smart-UPS: battery disconnected (chirp every 4 seconds)",
+        "APC Back-UPS: sleep mode after battery exhaustion (one beep every 4 seconds while that alarm is sounding)"
+      ],
+      "sources": [
+        "https://www.eaton.com/content/dam/eaton/products/backup-power-ups-surge-it-power-distribution/backup-power-ups/tripp-lite-series-smartonline/manuals/eaton-tripp-lite-series-smartonline-ups-SU1500LCD1U-SU2000LCD1U-tower-owners-manual.pdf",
+        "https://www.se.com/us/en/faqs/FA156554/",
+        "https://cdn.blueally.com/apcguard/datasheets/be750g.pdf"
+      ],
+      "notes": "Three different faults share this cadence. The rhythm identifies the cadence, and the meanings list every documented cause."
+    },
+    {
+      "id": "pulse_every_10s",
+      "kind": "pulse",
+      "beep_ms": [70, 250],
+      "cycle_ms": [10000, 10000],
+      "meanings": [
+        "Tripp Lite SmartPro: on battery (one beep every 10 seconds)"
+      ],
+      "sources": [
+        "https://www.eaton.com/content/dam/eaton/products/backup-power-ups-surge-it-power-distribution/backup-power-ups/tripp-lite-by-eaton-smartpro/guides/eaton-tripp-lite-series-smartpro-low-voltage-user-guide.pdf"
+      ]
+    },
+    {
+      "id": "one_long_beep",
+      "kind": "single",
+      "beep_ms": [1500, 8000],
+      "meanings": [
+        "CyberPower: output overload (one long beep). Turn the UPS off, remove load, reset the breaker."
+      ],
+      "sources": [
+        "https://www.cyberpowersystems.com/blog/what-your-beeping-ups-is-telling-you/"
+      ],
+      "notes": "The blog calls this 'one long beep' and does not print its length. The band is any sustained beep from 1.5 to 8 seconds, heard once in the clip."
+    },
+    {
+      "id": "solid_tone",
+      "kind": "tone",
+      "meanings": [
+        "APC Smart-UPS: overload (loud solid tone until the load drops)",
+        "APC Back-UPS: overload (constant tone)",
+        "Some APC Back-UPS models: replace battery or battery disconnected (constant tone, not a chirp)"
+      ],
+      "sources": [
+        "https://www.se.com/us/en/faqs/FA156554/",
+        "https://cdn.blueally.com/apcguard/datasheets/be750g.pdf"
+      ],
+      "notes": "A solid tone fills the clip. It is a different rhythm from CyberPower's single long beep, which starts and stops."
+    },
+    {
+      "id": "repeating_long_beep",
+      "kind": "repeating_long",
+      "beep_ms": [1500, 8000],
+      "cycle_ms": [15000, 45000],
+      "min_gap_ms": 6000,
+      "meanings": [
+        "CyberPower online / double-conversion UPS: overload or overheating. A long beep repeats every 15 to 45 seconds."
+      ],
+      "sources": [
+        "https://www.cyberpowersystems.com/blog/what-your-beeping-ups-is-telling-you/"
+      ],
+      "notes": "Labeled only when at least two long beeps are in the clip. One long beep by itself is the one_long_beep rhythm, because the repeat has not been heard yet."
+    },
+    {
+      "id": "not_alarm",
+      "kind": "negative",
+      "meanings": [
+        "Not a published UPS cadence: silence, fan noise, one stray short beep, or irregular short beeps."
+      ],
+      "sources": [],
+      "notes": "Negative class so the model can refuse sounds that are not one of the cadences above."
+    }
+  ]
+}

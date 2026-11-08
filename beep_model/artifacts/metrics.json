@@ -1,0 +1,767 @@
+{
+  "model_name": "random_forest",
+  "per_class": 400,
+  "seed": 7,
+  "epochs": 30,
+  "n_train": 3360,
+  "n_val": 720,
+  "n_test": 720,
+  "feature_names": [
+    "duration_s",
+    "n_pulses",
+    "pulses_per_s",
+    "median_width_ms",
+    "min_period_ms",
+    "max_period_ms",
+    "duty_cycle",
+    "longest_silence_ms",
+    "longest_pulse_ms",
+    "longest_silence_frac",
+    "longest_pulse_frac"
+  ],
+  "detector_recall": {
+    "burst_4_every_30s": 0.98875,
+    "burst_2_every_30s": 0.99,
+    "paired_rapid": 1.0,
+    "pulse_every_0_5s": 1.0,
+    "pulse_every_2s": 1.0,
+    "pulse_every_3s": 1.0,
+    "pulse_every_4s": 1.0,
+    "pulse_every_10s": 1.0,
+    "one_long_beep": 1.0,
+    "solid_tone": 1.0,
+    "repeating_long_beep": 1.0,
+    "not_alarm": 1.0
+  },
+  "detector_precision": {
+    "burst_4_every_30s": 0.9878011994412493,
+    "burst_2_every_30s": 0.9921288922389923,
+    "paired_rapid": 1.0,
+    "pulse_every_0_5s": 1.0,
+    "pulse_every_2s": 1.0,
+    "pulse_every_3s": 1.0,
+    "pulse_every_4s": 1.0,
+    "pulse_every_10s": 1.0,
+    "one_long_beep": 1.0,
+    "solid_tone": 0.9999992749438148,
+    "repeating_long_beep": 1.0,
+    "not_alarm": 1.0
+  },
+  "noise_false_alarm_rate": 0.0,
+  "val_macro_f1": {
+    "sgd_log": 0.7318622419689701,
+    "random_forest": 0.9902841013606957
+  },
+  "selected_val_macro_f1": 0.9902841013606957,
+  "sgd_history": [
+    {
+      "epoch": 1,
+      "train_logloss": 1.407033625248613,
+      "val_macro_f1": 0.5587296044282615
+    },
+    {
+      "epoch": 2,
+      "train_logloss": 1.3018849950668785,
+      "val_macro_f1": 0.5779750507403776
+    },
+    {
+      "epoch": 3,
+      "train_logloss": 1.2493884736215224,
+      "val_macro_f1": 0.5910925073588291
+    },
+    {
+      "epoch": 4,
+      "train_logloss": 1.211098049108828,
+      "val_macro_f1": 0.6228003368479819
+    },
+    {
+      "epoch": 5,
+      "train_logloss": 1.1828857481579889,
+      "val_macro_f1": 0.6405904962895345
+    },
+    {
+      "epoch": 6,
+      "train_logloss": 1.1627477730601243,
+      "val_macro_f1": 0.6353333776895339
+    },
+    {
+      "epoch": 7,
+      "train_logloss": 1.1443881427727118,
+      "val_macro_f1": 0.6353040222043332
+    },
+    {
+      "epoch": 8,
+      "train_logloss": 1.1299753792175138,
+      "val_macro_f1": 0.6521978618597792
+    },
+    {
+      "epoch": 9,
+      "train_logloss": 1.1164512663780384,
+      "val_macro_f1": 0.6615610606517844
+    },
+    {
+      "epoch": 10,
+      "train_logloss": 1.1057221457389517,
+      "val_macro_f1": 0.6546928701199967
+    },
+    {
+      "epoch": 11,
+      "train_logloss": 1.0957974585424772,
+      "val_macro_f1": 0.6750792019941957
+    },
+    {
+      "epoch": 12,
+      "train_logloss": 1.0868501672409558,
+      "val_macro_f1": 0.680500335975371
+    },
+    {
+      "epoch": 13,
+      "train_logloss": 1.0789701203467024,
+      "val_macro_f1": 0.6906906957354549
+    },
+    {
+      "epoch": 14,
+      "train_logloss": 1.0705776965384546,
+      "val_macro_f1": 0.7044766225373008
+    },
+    {
+      "epoch": 15,
+      "train_logloss": 1.0647452393347832,
+      "val_macro_f1": 0.7004433014697505
+    },
+    {
+      "epoch": 16,
+      "train_logloss": 1.058568576949174,
+      "val_macro_f1": 0.7020441119510168
+    },
+    {
+      "epoch": 17,
+      "train_logloss": 1.0534325830007762,
+      "val_macro_f1": 0.7023006855990496
+    },
+    {
+      "epoch": 18,
+      "train_logloss": 1.047541813269493,
+      "val_macro_f1": 0.7005417324761986
+    },
+    {
+      "epoch": 19,
+      "train_logloss": 1.0421904911873716,
+      "val_macro_f1": 0.704596096115743
+    },
+    {
+      "epoch": 20,
+      "train_logloss": 1.0372668575767774,
+      "val_macro_f1": 0.702788081766408
+    },
+    {
+      "epoch": 21,
+      "train_logloss": 1.032879571033068,
+      "val_macro_f1": 0.7079052589018798
+    },
+    {
+      "epoch": 22,
+      "train_logloss": 1.0287221945582485,
+      "val_macro_f1": 0.7241696213128561
+    },
+    {
+      "epoch": 23,
+      "train_logloss": 1.0245682439293848,
+      "val_macro_f1": 0.719471267425526
+    },
+    {
+      "epoch": 24,
+      "train_logloss": 1.0208620708494283,
+      "val_macro_f1": 0.7213405562877541
+    },
+    {
+      "epoch": 25,
+      "train_logloss": 1.0174509234288927,
+      "val_macro_f1": 0.7300831726821926
+    },
+    {
+      "epoch": 26,
+      "train_logloss": 1.0139374732588102,
+      "val_macro_f1": 0.7272184852835105
+    },
+    {
+      "epoch": 27,
+      "train_logloss": 1.010380483557019,
+      "val_macro_f1": 0.7249581025408752
+    },
+    {
+      "epoch": 28,
+      "train_logloss": 1.0073206340811398,
+      "val_macro_f1": 0.7318622419689701
+    },
+    {
+      "epoch": 29,
+      "train_logloss": 1.004074906601197,
+      "val_macro_f1": 0.7239163239049061
+    },
+    {
+      "epoch": 30,
+      "train_logloss": 1.0011459403205274,
+      "val_macro_f1": 0.7242298690098363
+    }
+  ],
+  "test": {
+    "accuracy": 0.9916666666666667,
+    "macro_f1": 0.991720964119275,
+    "per_class_f1": {
+      "burst_2_every_30s": 0.9915966386554622,
+      "burst_4_every_30s": 0.9830508474576272,
+      "not_alarm": 0.9833333333333333,
+      "one_long_beep": 1.0,
+      "paired_rapid": 0.967741935483871,
+      "pulse_every_0_5s": 1.0,
+      "pulse_every_10s": 0.9915966386554622,
+      "pulse_every_2s": 0.9915966386554622,
+      "pulse_every_3s": 0.9917355371900827,
+      "pulse_every_4s": 1.0,
+      "repeating_long_beep": 1.0,
+      "solid_tone": 1.0
+    },
+    "confusion_matrix": {
+      "labels": [
+        "burst_2_every_30s",
+        "burst_4_every_30s",
+        "not_alarm",
+        "one_long_beep",
+        "paired_rapid",
+        "pulse_every_0_5s",
+        "pulse_every_10s",
+        "pulse_every_2s",
+        "pulse_every_3s",
+        "pulse_every_4s",
+        "repeating_long_beep",
+        "solid_tone"
+      ],
+      "rows_are_true": [
+        [
+          59,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          58,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          59,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          60,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          60,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          60,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          59,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          59,
+          1,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          60,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          60,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          60,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          60
+        ]
+      ]
+    }
+  },
+  "random_forest_feature_importance": {
+    "duration_s": 0.023779794544740423,
+    "n_pulses": 0.14869802582825192,
+    "pulses_per_s": 0.09746996047661641,
+    "median_width_ms": 0.07425246236839572,
+    "min_period_ms": 0.2312572572788635,
+    "max_period_ms": 0.11637102602842285,
+    "duty_cycle": 0.059126177355425115,
+    "longest_silence_ms": 0.06362098831750179,
+    "longest_pulse_ms": 0.06879671104133214,
+    "longest_silence_frac": 0.07154074612747113,
+    "longest_pulse_frac": 0.04508685063297921
+  },
+  "test_feature_centroids": {
+    "burst_2_every_30s": {
+      "duration_s": 17.345289583333336,
+      "n_pulses": 2.05,
+      "pulses_per_s": 0.5780483056730978,
+      "median_width_ms": 289.6911458333333,
+      "min_period_ms": 573.0374999999999,
+      "max_period_ms": 2921.296875,
+      "duty_cycle": 0.17989643901749167,
+      "longest_silence_ms": 12356.966666666667,
+      "longest_pulse_ms": 290.2177083333333,
+      "longest_silence_frac": 0.5348170295188389,
+      "longest_pulse_frac": 0.09845299378444465
+    },
+    "burst_4_every_30s": {
+      "duration_s": 15.863975000000005,
+      "n_pulses": 3.9833333333333334,
+      "pulses_per_s": 1.2440017435539596,
+      "median_width_ms": 130.56041666666664,
+      "min_period_ms": 295.7802083333335,
+      "max_period_ms": 2696.3875,
+      "duty_cycle": 0.15673052571777382,
+      "longest_silence_ms": 10521.6375,
+      "longest_pulse_ms": 131.78541666666675,
+      "longest_silence_frac": 0.487699656613589,
+      "longest_pulse_frac": 0.04262308491461251
+    },
+    "not_alarm": {
+      "duration_s": 19.50691145833333,
+      "n_pulses": 1.5333333333333334,
+      "pulses_per_s": 0.12247349720136509,
+      "median_width_ms": 54.75520833333344,
+      "min_period_ms": 764.5385416666667,
+      "max_period_ms": 1780.0875,
+      "duty_cycle": 0.014912837538915254,
+      "longest_silence_ms": 14460.878125,
+      "longest_pulse_ms": 55.01354166666677,
+      "longest_silence_frac": 0.7656395303827138,
+      "longest_pulse_frac": 0.008111246385528072
+    },
+    "one_long_beep": {
+      "duration_s": 14.362939583333336,
+      "n_pulses": 1.0,
+      "pulses_per_s": 0.12222311005584913,
+      "median_width_ms": 4959.079166666666,
+      "min_period_ms": 0.0,
+      "max_period_ms": 0.0,
+      "duty_cycle": 0.5634379520661255,
+      "longest_silence_ms": 7015.797916666666,
+      "longest_pulse_ms": 4959.079166666666,
+      "longest_silence_frac": 0.30417174530029134,
+      "longest_pulse_frac": 0.5634379520661255
+    },
+    "paired_rapid": {
+      "duration_s": 18.972339583333333,
+      "n_pulses": 49.95,
+      "pulses_per_s": 2.5907540293794438,
+      "median_width_ms": 112.54635416666669,
+      "min_period_ms": 210.95624999999987,
+      "max_period_ms": 655.696875,
+      "duty_cycle": 0.2847030881940731,
+      "longest_silence_ms": 593.0531249999999,
+      "longest_pulse_ms": 113.8229166666668,
+      "longest_silence_frac": 0.11509744285304467,
+      "longest_pulse_frac": 0.03379300441265287
+    },
+    "pulse_every_0_5s": {
+      "duration_s": 19.395021875,
+      "n_pulses": 37.71666666666667,
+      "pulses_per_s": 1.956117680539659,
+      "median_width_ms": 103.52291666666672,
+      "min_period_ms": 483.3697916666667,
+      "max_period_ms": 840.653125,
+      "duty_cycle": 0.20042768703314431,
+      "longest_silence_ms": 737.3510416666669,
+      "longest_pulse_ms": 104.83125000000005,
+      "longest_silence_frac": 0.07998931745694211,
+      "longest_pulse_frac": 0.014329768843517162
+    },
+    "pulse_every_10s": {
+      "duration_s": 32.0,
+      "n_pulses": 3.0,
+      "pulses_per_s": 0.09375,
+      "median_width_ms": 152.83958333333334,
+      "min_period_ms": 10532.215625,
+      "max_period_ms": 10834.644791666668,
+      "duty_cycle": 0.014281250000000006,
+      "longest_silence_ms": 11486.041666666666,
+      "longest_pulse_ms": 153.5760416666666,
+      "longest_silence_frac": 0.3589388020833333,
+      "longest_pulse_frac": 0.0047992513020833315
+    },
+    "pulse_every_2s": {
+      "duration_s": 32.0,
+      "n_pulses": 15.283333333333333,
+      "pulses_per_s": 0.47760416666666666,
+      "median_width_ms": 92.87031249999994,
+      "min_period_ms": 1962.909375,
+      "max_period_ms": 2853.6041666666665,
+      "duty_cycle": 0.04440807291666667,
+      "longest_silence_ms": 2858.5572916666665,
+      "longest_pulse_ms": 94.15937500000031,
+      "longest_silence_frac": 0.08932991536458336,
+      "longest_pulse_frac": 0.002942480468750009
+    },
+    "pulse_every_3s": {
+      "duration_s": 32.0,
+      "n_pulses": 10.366666666666667,
+      "pulses_per_s": 0.32395833333333335,
+      "median_width_ms": 136.67708333333343,
+      "min_period_ms": 2966.1302083333335,
+      "max_period_ms": 3799.415625,
+      "duty_cycle": 0.04414414062500001,
+      "longest_silence_ms": 3797.1395833333327,
+      "longest_pulse_ms": 138.02708333333314,
+      "longest_silence_frac": 0.11866061197916665,
+      "longest_pulse_frac": 0.00431334635416666
+    },
+    "pulse_every_4s": {
+      "duration_s": 32.0,
+      "n_pulses": 7.633333333333334,
+      "pulses_per_s": 0.23854166666666668,
+      "median_width_ms": 118.72916666666687,
+      "min_period_ms": 3947.0989583333335,
+      "max_period_ms": 4982.096875,
+      "duty_cycle": 0.028154947916666673,
+      "longest_silence_ms": 4997.798958333334,
+      "longest_pulse_ms": 119.82812499999999,
+      "longest_silence_frac": 0.1561812174479167,
+      "longest_pulse_frac": 0.0037446289062499976
+    },
+    "repeating_long_beep": {
+      "duration_s": 48.498508333333334,
+      "n_pulses": 2.35,
+      "pulses_per_s": 0.054078951047551886,
+      "median_width_ms": 4759.981770833333,
+      "min_period_ms": 30555.473958333332,
+      "max_period_ms": 30555.639583333334,
+      "duty_cycle": 0.2573331425702649,
+      "longest_silence_ms": 25795.659375,
+      "longest_pulse_ms": 4760.55,
+      "longest_silence_frac": 0.5703299382243749,
+      "longest_pulse_frac": 0.11604814186488827
+    },
+    "solid_tone": {
+      "duration_s": 17.226809375000006,
+      "n_pulses": 1.0,
+      "pulses_per_s": 0.08623352762730749,
+      "median_width_ms": 17226.809375,
+      "min_period_ms": 0.0,
+      "max_period_ms": 0.0,
+      "duty_cycle": 1.0,
+      "longest_silence_ms": 0.0,
+      "longest_pulse_ms": 17226.809375,
+      "longest_silence_frac": 0.0,
+      "longest_pulse_frac": 1.0
+    }
+  },
+  "examples": [
+    {
+      "file": "burst_4_every_30s.wav",
+      "expected": "burst_4_every_30s",
+      "predicted": "burst_4_every_30s",
+      "confidence": 0.9274641835672331,
+      "match": true
+    },
+    {
+      "file": "burst_2_every_30s.wav",
+      "expected": "burst_2_every_30s",
+      "predicted": "burst_2_every_30s",
+      "confidence": 1.0,
+      "match": true
+    },
+    {
+      "file": "paired_rapid.wav",
+      "expected": "paired_rapid",
+      "predicted": "paired_rapid",
+      "confidence": 0.9287873278934841,
+      "match": true
+    },
+    {
+      "file": "pulse_every_0_5s.wav",
+      "expected": "pulse_every_0_5s",
+      "predicted": "pulse_every_0_5s",
+      "confidence": 0.9673555906228566,
+      "match": true
+    },
+    {
+      "file": "pulse_every_2s.wav",
+      "expected": "pulse_every_2s",
+      "predicted": "pulse_every_2s",
+      "confidence": 1.0,
+      "match": true
+    },
+    {
+      "file": "pulse_every_3s.wav",
+      "expected": "pulse_every_3s",
+      "predicted": "pulse_every_3s",
+      "confidence": 1.0,
+      "match": true
+    },
+    {
+      "file": "pulse_every_4s.wav",
+      "expected": "pulse_every_4s",
+      "predicted": "pulse_every_4s",
+      "confidence": 1.0,
+      "match": true
+    },
+    {
+      "file": "pulse_every_10s.wav",
+      "expected": "pulse_every_10s",
+      "predicted": "pulse_every_10s",
+      "confidence": 1.0,
+      "match": true
+    },
+    {
+      "file": "one_long_beep.wav",
+      "expected": "one_long_beep",
+      "predicted": "one_long_beep",
+      "confidence": 1.0,
+      "match": true
+    },
+    {
+      "file": "solid_tone.wav",
+      "expected": "solid_tone",
+      "predicted": "solid_tone",
+      "confidence": 1.0,
+      "match": true
+    },
+    {
+      "file": "repeating_long_beep.wav",
+      "expected": "repeating_long_beep",
+      "predicted": "repeating_long_beep",
+      "confidence": 1.0,
+      "match": true
+    },
+    {
+      "file": "not_alarm.wav",
+      "expected": "not_alarm",
+      "predicted": "not_alarm",
+      "confidence": 0.9998828882179442,
+      "match": true
+    }
+  ],
+  "real_exam": [
+    {
+      "file": "CyberPower-Beeping-1-Two-Short-Beeps.wav",
+      "expected": "burst_2_every_30s",
+      "predicted": "burst_2_every_30s",
+      "confidence": 1.0,
+      "confident": true,
+      "match": true,
+      "duration_s": 1.846,
+      "n_pulses": 2,
+      "top": [
+        {
+          "rhythm": "burst_2_every_30s",
+          "p": 1.0
+        },
+        {
+          "rhythm": "solid_tone",
+          "p": 0.0
+        },
+        {
+          "rhythm": "repeating_long_beep",
+          "p": 0.0
+        }
+      ]
+    },
+    {
+      "file": "CyberPower-Beeping-2-One-Long-Beep.wav",
+      "expected": "one_long_beep",
+      "predicted": "one_long_beep",
+      "confidence": 0.995,
+      "confident": true,
+      "match": true,
+      "duration_s": 5.584,
+      "n_pulses": 1,
+      "top": [
+        {
+          "rhythm": "one_long_beep",
+          "p": 0.995
+        },
+        {
+          "rhythm": "burst_4_every_30s",
+          "p": 0.0025
+        },
+        {
+          "rhythm": "burst_2_every_30s",
+          "p": 0.0025
+        }
+      ]
+    },
+    {
+      "file": "CyberPower-Beeping-3-Rapid-Beep-every-half-second.wav",
+      "expected": "paired_rapid",
+      "predicted": "paired_rapid",
+      "confidence": 1.0,
+      "confident": true,
+      "match": true,
+      "duration_s": 4.319,
+      "n_pulses": 12,
+      "top": [
+        {
+          "rhythm": "paired_rapid",
+          "p": 1.0
+        },
+        {
+          "rhythm": "solid_tone",
+          "p": 0.0
+        },
+        {
+          "rhythm": "repeating_long_beep",
+          "p": 0.0
+        }
+      ]
+    },
+    {
+      "file": "CyberPower-Beeping-4-Continuous-Beep-every-15-seconds.wav",
+      "expected": "repeating_long_beep",
+      "predicted": "repeating_long_beep",
+      "confidence": 1.0,
+      "confident": true,
+      "match": true,
+      "duration_s": 20.668,
+      "n_pulses": 2,
+      "top": [
+        {
+          "rhythm": "repeating_long_beep",
+          "p": 1.0
+        },
+        {
+          "rhythm": "solid_tone",
+          "p": 0.0
+        },
+        {
+          "rhythm": "pulse_every_4s",
+          "p": 0.0
+        }
+      ]
+    }
+  ]
+}

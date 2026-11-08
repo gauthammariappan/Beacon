@@ -1,0 +1,33 @@
+{
+  "note": "Example recordings published by CyberPower. Held out of training and used only as a sanity check.",
+  "files": [
+    {
+      "file": "CyberPower-Beeping-1-Two-Short-Beeps.wav",
+      "url": "https://www.cyberpowersystems.com/wp-content/uploads/2022/07/CyberPower-Beeping-1-Two-Short-Beeps.wav",
+      "page": "https://www.cyberpowersystems.com/blog/what-your-beeping-ups-is-telling-you/",
+      "expected": "burst_2_every_30s",
+      "why": "The file is only the pair. The 30 second pause is in the product manual, not in this clip."
+    },
+    {
+      "file": "CyberPower-Beeping-2-One-Long-Beep.wav",
+      "url": "https://www.cyberpowersystems.com/wp-content/uploads/2022/07/CyberPower-Beeping-2-One-Long-Beep.wav",
+      "page": "https://www.cyberpowersystems.com/blog/what-your-beeping-ups-is-telling-you/",
+      "expected": "one_long_beep",
+      "why": "One sustained beep that starts and stops."
+    },
+    {
+      "file": "CyberPower-Beeping-3-Rapid-Beep-every-half-second.wav",
+      "url": "https://www.cyberpowersystems.com/wp-content/uploads/2022/07/CyberPower-Beeping-3-Rapid-Beep-every-half-second.wav",
+      "page": "https://www.cyberpowersystems.com/blog/what-your-beeping-ups-is-telling-you/",
+      "expected": "paired_rapid",
+      "why": "The recording is a repeating pair of beeps."
+    },
+    {
+      "file": "CyberPower-Beeping-4-Continuous-Beep-every-15-seconds.wav",
+      "url": "https://www.cyberpowersystems.com/wp-content/uploads/2022/07/CyberPower-Beeping-4-Continuous-Beep-every-15-seconds.wav",
+      "page": "https://www.cyberpowersystems.com/blog/what-your-beeping-ups-is-telling-you/",
+      "expected": "repeating_long_beep",
+      "why": "Two multi-second tones about 15 seconds apart."
+    }
+  ]
+}
