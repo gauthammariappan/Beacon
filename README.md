@@ -45,8 +45,11 @@ The microphones are powered from GPIO pins set HIGH, so no breadboard is needed.
 1. **Firmware:** open `firmware/beacon_turret/beacon_turret.ino` in the Arduino IDE with the arduino-pico core (board: Raspberry Pi Pico 2W) and upload it. Serial commands include `AIM,<deg>`, `LOCK,<deg>`, `JOG,<deg>`, `HOME`, `SETHOME`, `LASER,<0|1>` and `MIC,<0|1>`.
 2. **Python:** `pip install -r requirements.txt` (macOS or Linux; the serial code uses termios).
 3. **Sounds for the phones:** `python3 tools/make_beeps.py` writes the alarm beeps, and `python3 tools/make_chatter.py` writes a background-chatter track (macOS). Both go into `beeps/`.
-4. **Live demo:** `python3 tools/live.py`. Press Enter to listen. It prints an address to open on a phone on the same Wi-Fi or hotspot, and `http://localhost:8787/qr` on the laptop shows a QR code for it.
-5. **Laser angles** for each rack are in `config/aim_points.json`.
+4. **Live demo (mics and model):** `python3 tools/live.py`. Press Enter to listen. It prints an address to open on a phone on the same Wi-Fi or hotspot, and `http://localhost:8787/qr` on the laptop shows a QR code for it.
+5. **Remote (no mics, no model):** `python3 tools/remote.py`. It serves the same alert page, plus a remote at `/control` for a second phone: tap a rack, the laser points at it, and the alert goes out. `http://localhost:8787/qr?control` shows a QR code for the remote.
+6. **Laser angles** for each rack are in `config/aim_points.json`.
+
+Only one script can use the Pico at a time. If another one already has it, the new one stops and says which.
 
 ## Recording and training
 
@@ -59,7 +62,7 @@ The recordings are not in this repo. `RECORDING.md` explains how to record a new
 | `firmware/beacon_turret/` | The Pico firmware: microphones, servo and laser |
 | `firmware/tests/` | Small sketches used to test each part on its own |
 | `beacon/` | Beep detection, features, the serial link, and the phone page server (`hub.py`, `web/`) |
-| `tools/` | `record.py`, `train.py`, `live.py`, and the sound generators |
+| `tools/` | `record.py`, `train.py`, `live.py` (mics and model), `remote.py` (phone remote, no mics or model), and the sound generators |
 | `config/aim_points.json` | Laser angle for each rack |
 | `model/` | The trained model and its test results |
 | `TEAM.md`, `RECORDING.md` | How the team built the hardware and recorded the data |
