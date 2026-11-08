@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Beacon v2.1 · Acoustic Localization</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfeff',
+              400: '#22d3ee',
+              500: '#06b6d4',
+              600: '#0891b2',
+              900: '#164e63',
+            },
+            rack: {
+              idle: '#1e293b',
+              glow: '#06b6d4',
+              active: '#f59e0b',
+              alarm: '#ef4444',
+            }
+          },
+          animation: {
+            'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'radar': 'radar 3s ease-out infinite',
+            'glow': 'glow 1.5s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            radar: {
+              '0%': { transform: 'scale(0.8)', opacity: '0.8' },
+              '100%': { transform: 'scale(2.2)', opacity: '0' },
+            },
+            glow: {
+              '0%': { filter: 'drop-shadow(0 0 5px rgba(6,182,212,0.6))' },
+              '100%': { filter: 'drop-shadow(0 0 25px rgba(245,158,11,0.9))' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Responsive Bifurcation */
+    @media (max-width: 767px) {
+      .noc-desktop-view {
+        display: none !important;
+      }
+      .technician-pager-view {
+        display: flex !important;
+      }
+    }
+    @media (min-width: 768px) {
+      .noc-desktop-view {
+        display: flex !important;
+      }
+      .technician-pager-view {
+        display: none !important;
+      }
+    }
+    /* Simulation Overrides */
+    body.force-mobile .noc-desktop-view {
+      display: none !important;
+    }
+    body.force-mobile .technician-pager-view {
+      display: flex !important;
+    }
+    body.force-desktop .noc-desktop-view {
+      display: flex !important;
+    }
+    body.force-desktop .technician-pager-view {
+      display: none !important;
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="h-full font-sans antialiased select-none flex flex-col overflow-hidden bg-slate-950 text-slate-100">
+
+  <!-- ===================================================================== -->
+  <!-- 1. TECHNICIAN PAGER VIEW (Mobile Screen: ONLY this is rendered)       -->
+  <!-- ===================================================================== -->
+  <div class="technician-pager-view flex-1 flex-col justify-between p-4 sm:p-6 bg-slate-950 relative overflow-y-auto">
+    
+    <!-- Top Pager Header -->
+    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+      <div class="flex items-center gap-2">
+        <span class="relative flex h-3 w-3">
+          <span id="mobile-ws-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+          <span id="mobile-ws-dot" class="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+        </span>
+        <span class="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Beacon Pager · v2.1</span>
+      </div>
+      <button id="btn-toggle-view-mobile" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 font-mono">
+        Desktop View
+      </button>
+    </div>
+
+    <!-- Active Incident / Nominal Alert Card -->
+    <div id="mobile-alert-container" class="my-auto py-4 flex flex-col items-center text-center">
+      
+      <!-- State: No Active Incident (Nominal Standby) -->
+      <div id="mobile-nominal-state" class="flex flex-col items-center justify-center space-y-5">
+        <div class="relative w-24 h-24 flex items-center justify-center">
+          <div class="absolute w-24 h-24 rounded-full border border-cyan-500/20 animate-radar"></div>
+          <div class="w-16 h-16 rounded-full bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-center shadow-lg shadow-cyan-900/30">
+            <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-slate-200">AISLE SCANNING ACTIVE</h2>
+          <p class="text-sm text-slate-500 mt-1 font-mono">3 Mics Listening at 2500 Hz · No Alarm</p>
+        </div>
+        <div class="px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono text-slate-400 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ALL 5 RACKS NOMINAL
+        </div>
+      </div>
+
+      <!-- State: Active Incident Alert Card -->
+      <div id="mobile-active-state" class="hidden w-full max-w-sm rounded-2xl p-6 bg-gradient-to-b from-amber-950/60 to-slate-900 border-2 border-amber-500 shadow-2xl shadow-amber-950/80 animate-glow">
+        
+        <!-- Status Badge -->
+        <div class="flex items-center justify-between pb-4 border-b border-amber-500/20">
+          <span id="mobile-incident-id" class="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">INC-01</span>
+          <span id="mobile-incident-state" class="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-extrabold tracking-wider animate-pulse">
+            IDENTIFIED
+          </span>
+        </div>
+
+        <!-- Target Rack Title -->
+        <div class="py-5">
+          <p class="text-xs uppercase tracking-widest text-amber-400/80 font-mono font-bold">ACOUSTIC TARGET LOCK</p>
+          <div class="text-6xl font-black text-amber-400 tracking-tight my-1 flex items-center justify-center gap-2">
+            <span>RACK</span>
+            <span id="mobile-rack-letter" class="underline decoration-amber-500">B</span>
+          </div>
+          <p id="mobile-alarm-meaning" class="text-lg font-bold text-slate-100 mt-2">UPS: On Battery</p>
+          <p id="mobile-alarm-action" class="text-xs font-mono text-slate-400 mt-1">Check upstream power / generator</p>
+        </div>
+
+        <!-- Confidence & Beep Counts -->
+        <div class="grid grid-cols-2 gap-2 pt-3 border-t border-amber-500/20 text-left font-mono text-xs">
+          <div class="bg-slate-950/60 p-2 rounded border border-slate-800">
+            <span class="text-slate-500 block">CONFIDENCE</span>
+            <span id="mobile-confidence-val" class="text-amber-400 font-bold text-sm">89.4%</span>
+          </div>
+          <div class="bg-slate-950/60 p-2 rounded border border-slate-800">
+            <span class="text-slate-500 block">BEEPS COUNT</span>
+            <span id="mobile-beeps-val" class="text-slate-200 font-bold text-sm">12 beeps</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Giant Technician ACKNOWLEDGE Action Button -->
+    <div class="pt-3 pb-2">
+      <button id="btn-mobile-ack" class="w-full py-5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-black text-2xl tracking-wider uppercase shadow-xl shadow-amber-500/30 transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:pointer-events-none">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <span>ACKNOWLEDGE</span>
+      </button>
+      <p class="text-center text-[11px] font-mono text-slate-500 mt-2">
+        Acknowledge marks incident as inspected and syncs all dashboards instantly.
+      </p>
+    </div>
+
+  </div>
+
+
+  <!-- ===================================================================== -->
+  <!-- 2. NOC DASHBOARD (Desktop Screen: Full Map, Tabs, Metrics, Laser)     -->
+  <!-- ===================================================================== -->
+  <div class="noc-desktop-view flex-1 flex-col h-full overflow-hidden bg-slate-950">
+    
+    <!-- Top Navigation Bar -->
+    <header class="h-14 border-b border-slate-800 px-6 flex items-center justify-between bg-slate-900/60 backdrop-blur shrink-0">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 font-black text-sm">
+            B
+          </div>
+          <span class="font-bold text-base tracking-tight text-slate-100">Beacon <span class="text-cyan-400 font-mono text-xs">v2.1</span></span>
+        </div>
+        <span class="text-slate-600">|</span>
+        <span class="text-xs font-mono text-slate-400 hidden lg:inline">Data Center Acoustic Localization & Direction Finding</span>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+        <button id="tab-btn-live" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide font-mono transition-all bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20" data-tab="tab-live">
+          📡 Live Aisle
+        </button>
+        <button id="tab-btn-model" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide font-mono transition-all text-slate-400 hover:text-slate-200" data-tab="tab-model">
+          📊 Model Proof
+        </button>
+        <button id="tab-btn-setup" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide font-mono transition-all text-slate-400 hover:text-slate-200" data-tab="tab-setup">
+          🎯 Laser Setup
+        </button>
+      </nav>
+
+      <!-- System Status Indicators -->
+      <div class="flex items-center gap-3">
+        <button id="btn-toggle-view-desktop" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 font-mono">
+          📱 Pager Mode
+        </button>
+        <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono">
+          <span class="relative flex h-2.5 w-2.5">
+            <span id="desktop-ws-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span id="desktop-ws-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span id="desktop-ws-status" class="text-slate-300">WS LIVE (10Hz)</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Tab Content Area -->
+    <main class="flex-1 overflow-y-auto p-6">
+      
+      <!-- ========================================== -->
+      <!-- TAB 1: LIVE AISLE DASHBOARD                -->
+      <!-- ========================================== -->
+      <div id="tab-live" class="tab-pane flex flex-col gap-6 max-w-7xl mx-auto">
+        
+        <!-- Live SVG Rack Map Section -->
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 backdrop-blur shadow-xl relative overflow-hidden">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 font-mono">Top-Down Aisle Sensor Map (85 cm Span)</h2>
+              <p class="text-xs text-slate-500 font-mono mt-0.5">3 Overhead Cardboard Arms (L, M, R) covering Racks A to E</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs font-mono text-slate-400">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-800 border border-slate-700"></span> Idle</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-500 shadow-md shadow-amber-500/50"></span> Target Lock</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> 2500Hz Mic</span>
+            </div>
+          </div>
+
+          <!-- SVG Visual Map -->
+          <div class="w-full flex justify-center bg-slate-950/80 rounded-xl border border-slate-800/80 p-4">
+            <svg id="aisle-svg" viewBox="0 0 900 320" class="w-full max-w-4xl h-auto">
+              <!-- Aisle background grid -->
+              <defs>
+                <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                  <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#1e293b" stroke-width="0.7"/>
+                </pattern>
+                <filter id="glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="8" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+
+              <rect width="900" height="320" fill="url(#grid)" rx="8" />
+
+              <!-- Aisle Label -->
+              <text x="450" y="165" text-anchor="middle" fill="#334155" font-size="14" font-family="monospace" letter-spacing="4">
+                DATA HALL AISLE (85 CM)
+              </text>
+
+              <!-- Laser Turret in Aisle Center (bottom) -->
+              <g id="laser-turret" transform="translate(450, 270)">
+                <circle r="18" fill="#1e293b" stroke="#06b6d4" stroke-width="2" />
+                <circle r="7" fill="#ef4444" />
+                <!-- Laser beam path (rendered dynamically) -->
+                <line id="laser-beam" x1="0" y1="0" x2="0" y2="-170" stroke="#ef4444" stroke-width="2" stroke-dasharray="4,4" opacity="0.4" />
+                <text x="0" y="32" text-anchor="middle" fill="#64748b" font-size="10" font-family="monospace">LASER TURRET</text>
+              </g>
+
+              <!-- 5 Horizontal Racks (A, B, C, D, E) -->
+              <!-- Rack A (x: 50, y: 30) -->
+              <g id="svg-rack-A" class="rack-group transition-all duration-300" transform="translate(50, 30)">
+                <rect class="rack-rect" width="130" height="90" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+                <text x="65" y="45" text-anchor="middle" fill="#e2e8f0" font-size="20" font-weight="900" font-family="monospace">RACK A</text>
+                <text class="rack-conf" x="65" y="70" text-anchor="middle" fill="#64748b" font-size="11" font-family="monospace">IDLE</text>
+              </g>
+
+              <!-- Rack B (x: 215, y: 30) -->
+              <g id="svg-rack-B" class="rack-group transition-all duration-300" transform="translate(215, 30)">
+                <rect class="rack-rect" width="130" height="90" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+                <text x="65" y="45" text-anchor="middle" fill="#e2e8f0" font-size="20" font-weight="900" font-family="monospace">RACK B</text>
+                <text class="rack-conf" x="65" y="70" text-anchor="middle" fill="#64748b" font-size="11" font-family="monospace">IDLE</text>
+              </g>
+
+              <!-- Rack C (x: 385, y: 30) -->
+              <g id="svg-rack-C" class="rack-group transition-all duration-300" transform="translate(385, 30)">
+                <rect class="rack-rect" width="130" height="90" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+                <text x="65" y="45" text-anchor="middle" fill="#e2e8f0" font-size="20" font-weight="900" font-family="monospace">RACK C</text>
+                <text class="rack-conf" x="65" y="70" text-anchor="middle" fill="#64748b" font-size="11" font-family="monospace">IDLE</text>
+              </g>
+
+              <!-- Rack D (x: 555, y: 30) -->
+              <g id="svg-rack-D" class="rack-group transition-all duration-300" transform="translate(555, 30)">
+                <rect class="rack-rect" width="130" height="90" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+                <text x="65" y="45" text-anchor="middle" fill="#e2e8f0" font-size="20" font-weight="900" font-family="monospace">RACK D</text>
+                <text class="rack-conf" x="65" y="70" text-anchor="middle" fill="#64748b" font-size="11" font-family="monospace">IDLE</text>
+              </g>
+
+              <!-- Rack E (x: 720, y: 30) -->
+              <g id="svg-rack-E" class="rack-group transition-all duration-300" transform="translate(720, 30)">
+                <rect class="rack-rect" width="130" height="90" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+                <text x="65" y="45" text-anchor="middle" fill="#e2e8f0" font-size="20" font-weight="900" font-family="monospace">RACK E</text>
+                <text class="rack-conf" x="65" y="70" text-anchor="middle" fill="#64748b" font-size="11" font-family="monospace">IDLE</text>
+              </g>
+
+              <!-- 3 Microphones (L in front of A, M in front of C, R in front of E) -->
+              <!-- Mic L (x: 115, y: 185) -->
+              <g id="svg-mic-L" transform="translate(115, 185)">
+                <circle class="mic-circle" r="14" fill="#0891b2" stroke="#22d3ee" stroke-width="2"/>
+                <text x="0" y="4" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="bold" font-family="monospace">L</text>
+                <text x="0" y="24" text-anchor="middle" fill="#06b6d4" font-size="10" font-family="monospace">MIC L (GP26)</text>
+              </g>
+
+              <!-- Mic M (x: 450, y: 185) -->
+              <g id="svg-mic-M" transform="translate(450, 185)">
+                <circle class="mic-circle" r="14" fill="#0891b2" stroke="#22d3ee" stroke-width="2"/>
+                <text x="0" y="4" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="bold" font-family="monospace">M</text>
+                <text x="0" y="24" text-anchor="middle" fill="#06b6d4" font-size="10" font-family="monospace">MIC M (GP27)</text>
+              </g>
+
+              <!-- Mic R (x: 785, y: 185) -->
+              <g id="svg-mic-R" transform="translate(785, 185)">
+                <circle class="mic-circle" r="14" fill="#0891b2" stroke="#22d3ee" stroke-width="2"/>
+                <text x="0" y="4" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="bold" font-family="monospace">R</text>
+                <text x="0" y="24" text-anchor="middle" fill="#06b6d4" font-size="10" font-family="monospace">MIC R (GP28)</text>
+              </g>
+
+            </svg>
+          </div>
+        </div>
+
+        <!-- 2-Column Grid: Live Mic Energy Bars (10Hz) & Active Incident Card -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Left Column: Live Mic Energies (10 Hz) -->
+          <div class="lg:col-span-5 rounded-2xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 font-mono">Live 2500Hz Mic Energy (10Hz Stream)</h3>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">50Hz EWMA</span>
+              </div>
+              
+              <!-- 3 Mic Level Meters -->
+              <div class="space-y-4 my-2">
+                <!-- Mic L -->
+                <div>
+                  <div class="flex justify-between text-xs font-mono mb-1">
+                    <span class="text-cyan-400 font-bold">MIC L (Front of Rack A)</span>
+                    <span id="level-val-L" class="text-slate-300">10.0</span>
+                  </div>
+                  <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                    <div id="bar-mic-L" class="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full transition-all duration-100" style="width: 10%"></div>
+                  </div>
+                </div>
+
+                <!-- Mic M -->
+                <div>
+                  <div class="flex justify-between text-xs font-mono mb-1">
+                    <span class="text-cyan-400 font-bold">MIC M (Front of Rack C)</span>
+                    <span id="level-val-M" class="text-slate-300">10.0</span>
+                  </div>
+                  <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                    <div id="bar-mic-M" class="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full transition-all duration-100" style="width: 10%"></div>
+                  </div>
+                </div>
+
+                <!-- Mic R -->
+                <div>
+                  <div class="flex justify-between text-xs font-mono mb-1">
+                    <span class="text-cyan-400 font-bold">MIC R (Front of Rack E)</span>
+                    <span id="level-val-R" class="text-slate-300">10.0</span>
+                  </div>
+                  <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                    <div id="bar-mic-R" class="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full transition-all duration-100" style="width: 10%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] font-mono text-slate-500 flex justify-between">
+              <span>Hysteresis Trigger: 5× floor + purity > 2.5</span>
+              <span>Silence Timeout: 10s</span>
+            </div>
+          </div>
+
+          <!-- Right Column: Active Incident Card -->
+          <div class="lg:col-span-7 rounded-2xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 font-mono">Incident Manager Status</h3>
+                  <span id="desktop-incident-id" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">NO ACTIVE INCIDENT</span>
+                </div>
+                <span id="desktop-incident-state" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 uppercase font-bold">
+                  CLEARED
+                </span>
+              </div>
+
+              <!-- Main Incident Info -->
+              <div class="grid grid-cols-3 gap-4 my-4">
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span class="text-[11px] text-slate-500 font-mono block">PREDICTED RACK</span>
+                  <span id="desktop-rack-val" class="text-3xl font-black text-cyan-400 font-mono">—</span>
+                </div>
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span class="text-[11px] text-slate-500 font-mono block">CONFIDENCE</span>
+                  <span id="desktop-conf-val" class="text-3xl font-black text-slate-200 font-mono">—</span>
+                </div>
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span class="text-[11px] text-slate-500 font-mono block">BEEPS INTEGRATED</span>
+                  <span id="desktop-beeps-val" class="text-3xl font-black text-slate-400 font-mono">0</span>
+                </div>
+              </div>
+
+              <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 mb-3">
+                <div class="flex justify-between text-xs font-mono mb-1">
+                  <span class="text-slate-400">ALARM CLASSIFICATION (CADENCE):</span>
+                  <span id="desktop-alarm-meaning" class="text-amber-400 font-bold">Scanning rhythm...</span>
+                </div>
+                <p id="desktop-alarm-action" class="text-xs text-slate-500 font-mono">Waiting for temporal pattern confirmation</p>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+              <span id="desktop-last-heard" class="text-xs font-mono text-slate-500">Last heard: —</span>
+              <button id="btn-desktop-ack" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-bold text-xs font-mono tracking-wider uppercase transition-all shadow-md shadow-amber-500/20 disabled:opacity-40 disabled:pointer-events-none">
+                Acknowledge Incident
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ========================================== -->
+      <!-- TAB 2: MODEL PROOF (Why ML for Judges)     -->
+      <!-- ========================================== -->
+      <div id="tab-model" class="tab-pane hidden flex-col gap-6 max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-slate-100 font-mono">ML Location Model Proof: 3 Methods Benchmarked</h2>
+            <p class="text-xs text-slate-400 font-mono mt-0.5">Trained on Session 1, evaluated against Session 2 test data (acoustic reflections & leakage)</p>
+          </div>
+          <button id="btn-refresh-metrics" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+            ↻ Refresh Metrics
+          </button>
+        </div>
+
+        <!-- 3-Method Accuracy Comparison Hero Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <!-- Baseline 1: Loudest Mic -->
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold">BASELINE 1</span>
+                <span class="text-xs font-mono text-rose-400">Can't name B or D</span>
+              </div>
+              <h3 class="font-bold text-sm text-slate-200">Loudest Mic (Argmax)</h3>
+              <p class="text-xs text-slate-500 font-mono mt-1">Picks A, C, or E based on largest 2500Hz energy</p>
+              <div class="mt-4">
+                <span id="metric-loudest-acc" class="text-4xl font-black text-rose-400 font-mono">51.7%</span>
+                <span class="text-xs text-slate-500 font-mono block mt-1">Test Accuracy</span>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-500">
+              0% recall on inter-mic Racks B and D.
+            </div>
+          </div>
+
+          <!-- Baseline 2: Weighted Centroid -->
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold">BASELINE 2</span>
+                <span class="text-xs font-mono text-amber-400">Non-ML Comparison</span>
+              </div>
+              <h3 class="font-bold text-sm text-slate-200">Weighted Centroid</h3>
+              <p class="text-xs text-slate-500 font-mono mt-1">Interpolates shares across 0=A to 4=E, snaps to nearest</p>
+              <div class="mt-4">
+                <span id="metric-centroid-acc" class="text-4xl font-black text-amber-400 font-mono">51.0%</span>
+                <span class="text-xs text-slate-500 font-mono block mt-1">Test Accuracy</span>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-500">
+              Interpolates B/D, but fails on boundary reflections & NONE.
+            </div>
+          </div>
+
+          <!-- Winner: Random Forest ML -->
+          <div class="rounded-2xl border-2 border-cyan-500 bg-gradient-to-b from-cyan-950/40 to-slate-900 p-5 backdrop-blur flex flex-col justify-between shadow-xl shadow-cyan-950/40">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-mono px-2 py-0.5 rounded bg-cyan-500 text-slate-950 font-black">WINNER (ML)</span>
+                <span class="text-xs font-mono text-cyan-300 font-bold">Spatial Fingerprint</span>
+              </div>
+              <h3 class="font-bold text-sm text-slate-100">Random Forest Classifier</h3>
+              <p class="text-xs text-slate-400 font-mono mt-1">Learns aisle multipath, log-ratios, purity & SNR</p>
+              <div class="mt-4">
+                <span id="metric-rf-acc" class="text-4xl font-black text-cyan-400 font-mono">100.0%</span>
+                <span class="text-xs text-cyan-500/80 font-mono block mt-1">Test Accuracy</span>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-cyan-500/20 text-[11px] font-mono text-cyan-300">
+              Saved to <code class="bg-cyan-950 px-1 py-0.5 rounded">location_model.joblib</code>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Confusion Matrices Render Area -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+            <h4 class="text-xs font-bold font-mono uppercase text-slate-300 mb-3">Loudest Mic Confusion Matrix</h4>
+            <div id="cm-loudest" class="overflow-x-auto"></div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+            <h4 class="text-xs font-bold font-mono uppercase text-slate-300 mb-3">Weighted Centroid Confusion Matrix</h4>
+            <div id="cm-centroid" class="overflow-x-auto"></div>
+          </div>
+
+          <div class="rounded-2xl border border-cyan-500/40 bg-slate-900/40 p-5">
+            <h4 class="text-xs font-bold font-mono uppercase text-cyan-400 mb-3">Random Forest Confusion Matrix</h4>
+            <div id="cm-rf" class="overflow-x-auto"></div>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ========================================== -->
+      <!-- TAB 3: LASER SETUP & SERVO JOG CONTROLS    -->
+      <!-- ========================================== -->
+      <div id="tab-setup" class="tab-pane hidden flex-col gap-6 max-w-4xl mx-auto">
+        
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 backdrop-blur">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200 font-mono">Pan-Only Laser Turret Calibration</h2>
+          <p class="text-xs text-slate-400 font-mono mt-1">
+            Aim the laser at each rack's center using arrow keys, then click 'Save Angle' to lock the aim points.
+          </p>
+
+          <!-- Current Angle Display & Jog Controls -->
+          <div class="flex flex-col items-center my-8">
+            <div class="text-5xl font-black text-cyan-400 font-mono mb-2" id="laser-angle-display">0°</div>
+            <span class="text-xs font-mono text-slate-500 mb-6">PAN SERVO ANGLE (-45° to +45°)</span>
+
+            <div class="flex items-center gap-4">
+              <button id="btn-jog-left" class="px-6 py-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-100 font-bold text-sm font-mono flex items-center gap-2 border border-slate-700">
+                ◀ Jog Left (-5°)
+              </button>
+              <button id="btn-toggle-laser" class="px-6 py-4 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold text-sm font-mono flex items-center gap-2 shadow-lg shadow-rose-900/40">
+                🔴 Laser: ON
+              </button>
+              <button id="btn-jog-right" class="px-6 py-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-cyan-600 text-slate-100 font-bold text-sm font-mono flex items-center gap-2 border border-slate-700">
+                Jog Right (+5°) ▶
+              </button>
+            </div>
+            <p class="text-xs text-slate-500 font-mono mt-3">You can also use Keyboard Left/Right Arrow Keys</p>
+          </div>
+
+          <!-- Save Rack Angle Grid -->
+          <div class="pt-6 border-t border-slate-800">
+            <h3 class="text-xs font-bold uppercase font-mono text-slate-400 mb-3">Save Angle for Selected Rack:</h3>
+            <div class="grid grid-cols-5 gap-3">
+              <button class="btn-save-rack py-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500 hover:bg-cyan-950/30 text-xs font-mono font-bold text-slate-200 transition-all" data-rack="A">
+                Rack A (-35°)
+                <span class="block text-[10px] text-cyan-400 mt-1">Save Angle</span>
+              </button>
+              <button class="btn-save-rack py-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500 hover:bg-cyan-950/30 text-xs font-mono font-bold text-slate-200 transition-all" data-rack="B">
+                Rack B (-18°)
+                <span class="block text-[10px] text-cyan-400 mt-1">Save Angle</span>
+              </button>
+              <button class="btn-save-rack py-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500 hover:bg-cyan-950/30 text-xs font-mono font-bold text-slate-200 transition-all" data-rack="C">
+                Rack C (0°)
+                <span class="block text-[10px] text-cyan-400 mt-1">Save Angle</span>
+              </button>
+              <button class="btn-save-rack py-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500 hover:bg-cyan-950/30 text-xs font-mono font-bold text-slate-200 transition-all" data-rack="D">
+                Rack D (+18°)
+                <span class="block text-[10px] text-cyan-400 mt-1">Save Angle</span>
+              </button>
+              <button class="btn-save-rack py-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500 hover:bg-cyan-950/30 text-xs font-mono font-bold text-slate-200 transition-all" data-rack="E">
+                Rack E (+35°)
+                <span class="block text-[10px] text-cyan-400 mt-1">Save Angle</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Blanking test button -->
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-mono text-slate-400">Servo movement triggers 350 ms acoustic blanking window</span>
+            <button id="btn-test-blanking" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300">
+              Test Blanking (350ms)
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

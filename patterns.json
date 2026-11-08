@@ -1,0 +1,21 @@
+{
+  "P1": {
+    "device": "UPS",
+    "meaning": "On Battery",
+    "action": "Check upstream power / generator",
+    "sound": "4 short beeps, then a pause (~5 s in demo)"
+  },
+  "P2": {
+    "device": "UPS",
+    "meaning": "Low Battery",
+    "action": "Shed load or start graceful shutdown",
+    "sound": "Continuous rapid beeping (< 1.0 s gap)"
+  },
+  "P3": {
+    "device": "UPS",
+    "meaning": "Overload",
+    "action": "Reduce load immediately",
+    "sound": "Steady continuous tone (> 600 ms)"
+  }
+}
+

@@ -1,0 +1,16 @@
+{
+  "aisle_length_cm": 85.0,
+  "racks": [
+    {"id": "A", "x_cm": 0.0, "width_cm": 15.0},
+    {"id": "B", "x_cm": 20.0, "width_cm": 15.0},
+    {"id": "C", "x_cm": 40.0, "width_cm": 15.0},
+    {"id": "D", "x_cm": 60.0, "width_cm": 15.0},
+    {"id": "E", "x_cm": 80.0, "width_cm": 15.0}
+  ],
+  "microphones": [
+    {"id": "L", "in_front_of": "A", "x_cm": 0.0, "y_cm": 15.0},
+    {"id": "M", "in_front_of": "C", "x_cm": 40.0, "y_cm": 15.0},
+    {"id": "R", "in_front_of": "E", "x_cm": 80.0, "y_cm": 15.0}
+  ]
+}
+
