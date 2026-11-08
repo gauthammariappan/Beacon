@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Beacon</title>
+<style>
+  /* iOS system palette: grouped background, secondary cards, system blue / red / green */
+  :root{
+    --bg:#f2f2f7; --card:#ffffff; --fill:#e9e9ee; --label:#000000; --secondary:#3c3c4399; --tertiary:#3c3c434d;
+    --separator:#c6c6c8; --blue:#007aff; --red:#ff3b30; --green:#34c759; --gray:#8e8e93;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 28px rgba(0,0,0,.06);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#000000; --card:#1c1c1e; --fill:#2c2c2e; --label:#ffffff; --secondary:#ebebf599; --tertiary:#ebebf54d;
+    --separator:#38383a; --blue:#0a84ff; --red:#ff453a; --green:#30d158; --gray:#8e8e93;
+    --shadow:none; color-scheme:dark;
+  }}
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;background:var(--bg);color:var(--label);font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
+  body{padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+  main{max-width:560px;margin:0 auto}
+
+  .nav{display:flex;align-items:flex-end;justify-content:space-between;padding:8px 4px 14px}
+  .nav h1{margin:0;font:700 34px/1.1 -apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;letter-spacing:.01em}
+  .nav .where{display:block;margin-top:2px;color:var(--secondary);font-size:15px;letter-spacing:-.01em}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--secondary);padding-bottom:6px}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--green)}
+  .live.off i{background:var(--gray)}
+
+  /* the big status panel */
+  .hero{--tint:var(--gray);position:relative;min-height:min(58vh,560px);border-radius:28px;background:var(--card);box-shadow:var(--shadow);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px 24px 28px;overflow:hidden;transition:background .4s}
+  .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 70% at 50% 0%,color-mix(in srgb,var(--tint) 14%,transparent),transparent 70%);pointer-events:none}
+  .hero[data-mode="listening"]{--tint:var(--blue)}
+  .hero[data-mode="alert"]{--tint:var(--red)}
+  .hero[data-mode="checked"]{--tint:var(--green)}
+  .orb{position:relative;width:132px;height:132px;margin-bottom:26px;display:grid;place-items:center}
+  .orb .disc{position:relative;z-index:1;width:132px;height:132px;border-radius:50%;display:grid;place-items:center;
+             background:color-mix(in srgb,var(--tint) 15%,var(--card));color:var(--tint);transition:background .4s,color .4s}
+  .orb .disc svg{width:58px;height:58px}
+  .ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--tint);opacity:0}
+  .hero[data-mode="listening"] .ring{animation:wave 2.6s ease-out infinite}
+  .hero[data-mode="listening"] .ring.r2{animation-delay:1.3s}
+  .hero[data-mode="alert"] .ring{animation:wave 1.4s ease-out infinite}
+  .hero[data-mode="alert"] .ring.r2{animation-delay:.7s}
+  @keyframes wave{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.7);opacity:0}}
+  .bars rect{transform-origin:center;transform-box:fill-box}
+  .hero[data-mode="listening"] .bars rect{animation:level 1.1s ease-in-out infinite}
+  .bars rect:nth-child(2){animation-delay:.15s!important}
+  .bars rect:nth-child(3){animation-delay:.3s!important}
+  .bars rect:nth-child(4){animation-delay:.45s!important}
+  .bars rect:nth-child(5){animation-delay:.6s!important}
+  @keyframes level{50%{transform:scaleY(.45)}}
+
+  .eyebrow{margin:0 0 6px;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tint)}
+  .hero h2{margin:0;font:700 30px/1.15 -apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;letter-spacing:.005em;text-wrap:balance}
+  .hero[data-mode="alert"] h2{font-size:36px}
+  .hero .sub{margin:8px 0 0;max-width:30ch;color:var(--secondary);font-size:17px;text-wrap:balance}
+  .segments{display:flex;gap:6px;margin-top:18px}
+  .segments i{width:30px;height:5px;border-radius:3px;background:var(--fill);transition:background .2s}
+  .segments i.on{background:var(--blue)}
+  .facts{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;justify-content:center}
+  .fact{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:var(--fill);font-size:14px;color:var(--secondary)}
+  .fact svg{width:14px;height:14px;color:var(--tint)}
+  .primary{margin-top:26px;width:100%;max-width:340px;padding:15px 20px;border:0;border-radius:14px;background:var(--red);color:#fff;
+           font:600 17px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;cursor:pointer;transition:transform .1s,opacity .2s}
+  .primary:active{transform:scale(.98)}
+  .primary[disabled]{opacity:.55}
+
+  /* inset grouped lists, like Settings */
+  .section{margin-top:34px}
+  .section h3{margin:0 0 7px;padding-left:16px;font-size:13px;font-weight:400;letter-spacing:.02em;text-transform:uppercase;color:var(--secondary)}
+  .group{background:var(--card);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  .row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:11px 16px;position:relative;min-height:60px}
+  .row + .row::before{content:"";position:absolute;top:0;left:56px;right:0;height:.5px;background:var(--separator)}
+  .icon{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff}
+  .icon svg{width:16px;height:16px}
+  .icon.open{background:var(--red)}
+  .icon.done{background:var(--green)}
+  .row .title{font-size:17px}
+  .row .detail{font-size:14px;color:var(--secondary);margin-top:1px}
+  .row .detail.open{color:var(--red)}
+  .row .time{font-size:15px;color:var(--secondary);font-variant-numeric:tabular-nums}
+  .empty{padding:22px 16px;text-align:center;color:var(--secondary);font-size:15px}
+  .note{margin:7px 16px 0;font-size:13px;color:var(--secondary)}
+
+  .field{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;min-height:48px;position:relative}
+  .field + .field::before{content:"";position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--separator)}
+  .field input[type=text]{flex:1;min-width:0;text-align:right;border:0;background:transparent;color:var(--label);font:inherit;outline:none}
+  .field input::placeholder{color:var(--tertiary)}
+  .switch{position:relative;width:51px;height:31px;flex:0 0 auto}
+  .switch input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+  .switch span{position:absolute;inset:0;border-radius:31px;background:var(--fill);transition:background .2s;pointer-events:none}
+  .switch span::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16);transition:transform .2s}
+  .switch input:checked + span{background:var(--green)}
+  .switch input:checked + span::after{transform:translateX(20px)}
+  .switch input:focus-visible + span{outline:2px solid var(--blue);outline-offset:2px}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <div class="nav">
+    <div><h1>Beacon</h1><span class="where">Data hall 1 · Row 1</span></div>
+    <span class="live" id="live"><i></i><span id="liveText">Live</span></span>
+  </div>
+
+  <section class="hero" id="hero" data-mode="standby" aria-live="polite">
+    <div class="orb"><span class="ring"></span><span class="ring r2"></span><div class="disc" id="glyph"></div></div>
+    <p class="eyebrow" id="eyebrow">Standby</p>
+    <h2 id="heroTitle">Not listening</h2>
+    <p class="sub" id="heroSub">Start listening from the Beacon laptop.</p>
+    <div class="segments" id="segments" hidden></div>
+    <div class="facts" id="facts" hidden></div>
+    <button class="primary" id="checkBtn" hidden>Mark as Checked</button>
+  </section>
+
+  <div class="section">
+    <h3>History</h3>
+    <div class="group" id="log"><div class="empty">No alerts yet.</div></div>
+    <p class="note">Every rack Beacon flags, and who checked it.</p>
+  </div>
+
+  <div class="section">
+    <h3>This phone</h3>
+    <div class="group">
+      <label class="field"><span>Your name</span><input type="text" id="name" maxlength="40" placeholder="Shown in the history"></label>
+      <div class="field"><span>Alert sound</span><label class="switch"><input type="checkbox" id="sound" aria-label="Alert sound"><span></span></label></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+  const ICON = {
+    wave: '<svg viewBox="0 0 48 48" fill="currentColor" class="bars"><rect x="6" y="18" width="5" height="12" rx="2.5"/><rect x="14.5" y="11" width="5" height="26" rx="2.5"/><rect x="23" y="5" width="5" height="38" rx="2.5"/><rect x="31.5" y="13" width="5" height="22" rx="2.5"/><rect x="40" y="19" width="5" height="10" rx="2.5"/></svg>',
+    alert: '<svg viewBox="0 0 48 48" fill="currentColor"><path d="M20.5 7.6a4 4 0 0 1 7 0l16.1 28A4 4 0 0 1 40.1 41.6H7.9a4 4 0 0 1-3.5-6Z"/><rect x="21.6" y="16" width="4.8" height="14" rx="2.4" fill="#fff"/><circle cx="24" cy="35" r="2.7" fill="#fff"/></svg>',
+    check: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 25.5l8.5 8.5L37 15"/></svg>',
+    pause: '<svg viewBox="0 0 48 48" fill="currentColor"><rect x="13" y="11" width="7" height="26" rx="3"/><rect x="28" y="11" width="7" height="26" rx="3"/></svg>',
+    bang: '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="6.8" y="3" width="2.4" height="7" rx="1.2"/><circle cx="8" cy="12.6" r="1.4"/></svg>',
+    tick: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg>',
+    laser: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
+    clock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.3"/><path d="M8 4.6V8l2.3 1.6"/></svg>'
+  };
+  let state = null, lastId = null, lastMsg = Date.now(), online = true, sound = false, audio = null, glyphKey = '';
+
+  try {
+    $('#name').value = localStorage.getItem('beacon-name') || '';
+    sound = localStorage.getItem('beacon-sound') === '1';
+    $('#sound').checked = false;   // audio needs a fresh tap after each page load
+  } catch (e) {}
+  $('#name').addEventListener('input', e => { try { localStorage.setItem('beacon-name', e.target.value); } catch (err) {} });
+  $('#sound').addEventListener('change', e => {
+    sound = e.target.checked;
+    if (sound && !audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (err) { sound = false; } }
+    if (audio && audio.state === 'suspended') audio.resume();
+    try { localStorage.setItem('beacon-sound', sound ? '1' : '0'); } catch (err) {}
+    if (sound) chime();
+  });
+
+  // the phone's own alert tone stays far from 2500 Hz so the rack microphones never mistake it for an alarm
+  function chime() {
+    if (!sound || !audio) return;
+    const now = audio.currentTime;
+    [[1046, 0], [1318, 0.14]].forEach(([f, d]) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, now + d);
+      g.gain.exponentialRampToValueAtTime(0.22, now + d + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + d + 0.45);
+      o.connect(g).connect(audio.destination); o.start(now + d); o.stop(now + d + 0.5);
+    });
+  }
+
+  const clock = t => new Date(t * 1000).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+  const took = sec => { sec = Math.round(sec); return sec < 60 ? sec + ' s' : Math.round(sec / 60) + ' min'; };
+  function ago(t) {
+    const s = Math.max(0, Math.round(Date.now() / 1000 - t));
+    if (s < 60) return 'Just now';
+    const m = Math.floor(s / 60);
+    return m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago';
+  }
+  function setGlyph(key) { if (glyphKey !== key) { $('#glyph').innerHTML = ICON[key]; glyphKey = key; } }
+
+  function renderHero(st) {
+    const open = st.incidents.find(i => i.ack_t === null);
+    const last = st.incidents[0];
+    const justChecked = !open && last && last.ack_t && Date.now() / 1000 - last.ack_t < 4;
+    const hero = $('#hero');
+    $('#segments').hidden = true; $('#facts').hidden = true; $('#checkBtn').hidden = true;
+
+    if (open) {
+      hero.dataset.mode = 'alert'; setGlyph('alert');
+      $('#eyebrow').textContent = 'Alert · ' + ago(open.t);
+      $('#heroTitle').textContent = 'Server Rack ' + open.rack;
+      $('#heroSub').textContent = 'might have an issue. Check it out.';
+      $('#facts').innerHTML = '<span class="fact">' + ICON.clock + 'Detected ' + clock(open.t) + '</span>' +
+                              '<span class="fact">' + ICON.laser + 'Laser is on the rack</span>';
+      $('#facts').hidden = false; $('#checkBtn').hidden = false;
+    } else if (justChecked) {
+      hero.dataset.mode = 'checked'; setGlyph('check');
+      $('#eyebrow').textContent = 'Checked';
+      $('#heroTitle').textContent = 'Rack ' + last.rack + ' checked';
+      $('#heroSub').textContent = 'by ' + last.ack_by + ', ' + took(last.ack_t - last.t) + ' after the alert. Laser off.';
+    } else if (st.status === 'listening') {
+      hero.dataset.mode = 'listening'; setGlyph('wave');
+      $('#eyebrow').textContent = 'Monitoring';
+      $('#heroTitle').textContent = st.beeps ? 'Hearing an alarm…' : 'Listening for alarms';
+      $('#heroSub').textContent = st.beeps ? 'Working out which rack it is.' : 'All 3 microphones in row 1 are live.';
+      if (st.beeps) {
+        $('#segments').innerHTML = Array.from({length: st.vote}, (_, i) => '<i class="' + (i < st.beeps ? 'on' : '') + '"></i>').join('');
+        $('#segments').hidden = false;
+      }
+    } else {
+      hero.dataset.mode = 'standby'; setGlyph('pause');
+      $('#eyebrow').textContent = 'Standby';
+      $('#heroTitle').textContent = 'Not listening';
+      $('#heroSub').textContent = st.message || 'Start listening from the Beacon laptop.';
+    }
+    document.title = open ? 'Rack ' + open.rack + ' · Beacon' : 'Beacon';
+  }
+
+  function renderLog(st) {
+    $('#log').innerHTML = st.incidents.length ? st.incidents.map(i => {
+      const isOpen = i.ack_t === null;
+      return '<div class="row"><span class="icon ' + (isOpen ? 'open' : 'done') + '">' + (isOpen ? ICON.bang : ICON.tick) + '</span>' +
+        '<div><div class="title">Server Rack ' + esc(i.rack) + '</div>' +
+        (isOpen ? '<div class="detail open">Needs checking</div>'
+                : '<div class="detail">Checked by ' + esc(i.ack_by) + ' · after ' + took(i.ack_t - i.t) + '</div>') +
+        '</div><span class="time">' + clock(i.t) + '</span></div>';
+    }).join('') : '<div class="empty">No alerts yet.</div>';
+  }
+
+  function render(st) {
+    state = st;
+    renderHero(st);
+    renderLog(st);
+    $('#live').classList.toggle('off', !online);
+    $('#liveText').textContent = online ? 'Live' : 'Reconnecting';
+    const newest = st.incidents[0];
+    if (newest && newest.id !== lastId) {
+      if (lastId !== null && newest.ack_t === null) { chime(); if (navigator.vibrate) navigator.vibrate([180, 90, 180]); }
+      lastId = newest.id;
+    } else if (!newest) {
+      lastId = 0;
+    }
+  }
+
+  // refresh "Just now" and let the green "Checked" moment fade back to listening
+  setInterval(() => { if (state) renderHero(state); }, 1000);
+
+  $('#checkBtn').addEventListener('click', async () => {
+    const btn = $('#checkBtn');
+    btn.disabled = true; btn.textContent = 'Marking…';
+    try {
+      await fetch('/ack', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                           body: JSON.stringify({by: ($('#name').value || 'Phone').trim()})});
+    } catch (e) {}
+    btn.disabled = false; btn.textContent = 'Mark as Checked';
+  });
+
+  async function poll() {
+    try { const r = await fetch('/state'); online = true; render(await r.json()); }
+    catch (e) { online = false; if (state) render(state); }
+  }
+  function connect() {
+    let es;
+    try { es = new EventSource('/events'); } catch (e) { return; }
+    es.onmessage = e => { lastMsg = Date.now(); online = true; render(JSON.parse(e.data).state); };
+    es.onerror = () => { online = false; if (state) render(state); };
+  }
+  // some phones pause the live stream in the background; fall back to asking every few seconds
+  setInterval(() => { if (Date.now() - lastMsg > 20000) poll(); }, 3000);
+  poll().then(connect);
+})();
+</script>
+</body>
+</html>

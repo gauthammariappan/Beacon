@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beacon</title>
+<style>
+  html,body{margin:0;height:100%;background:#ffffff;color:#1c1c1e;font:17px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+  .wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;box-sizing:border-box;text-align:center}
+  h1{margin:0;font-size:28px;font-weight:700}
+  p{margin:0;color:#6e6e73}
+  #qr{line-height:0}
+  #url{font-variant-numeric:tabular-nums;color:#1c1c1e}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <h1>Beacon alerts</h1>
+  <p>Scan with your phone camera.</p>
+  <div id="qr"></div>
+  <div id="url">…</div>
+  <p>Your phone needs to be on the same Wi-Fi or hotspot as this laptop.</p>
+</div>
+<script>
+fetch('/info').then(r => r.json()).then(({url}) => {
+  document.getElementById('url').textContent = url;
+  if (window.QRCode) new QRCode(document.getElementById('qr'), {text: url, width: 260, height: 260});
+});
+</script>
+</body>
+</html>

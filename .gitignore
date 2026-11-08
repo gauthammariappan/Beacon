@@ -1,0 +1,7 @@
+# recordings stay local (tools/record.py writes them here)
+data/
+# generated sound files: python3 tools/make_beeps.py and tools/make_chatter.py
+beeps/*.wav
+__pycache__/
+*.pyc
+.DS_Store
